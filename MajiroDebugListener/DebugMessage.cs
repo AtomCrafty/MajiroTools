@@ -2,8 +2,8 @@
 	public enum DebugMessage : ushort {
 		Attach = 0xA000,
 		Detach = 0xA001,
-		Heartbeat = 0xA002,
-		Respond = 0xA003,
+		Handshake = 0xA002,
+		Acknowledge = 0xA003,
 		A004 = 0xA004,
 		A005 = 0xA005,
 		A006 = 0xA006,

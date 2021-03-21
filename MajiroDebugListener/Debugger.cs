@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
+using System.Text;
 
 namespace MajiroDebugListener {
 
@@ -19,13 +21,20 @@ namespace MajiroDebugListener {
 		DebuggerStatus Status { get; }
 
 		void ProcessMessage(DebugMessage message, long wParam, long lParam);
+		void ReceiveData(IntPtr hWnd, IntPtr dwData, Stream stream);
 		void Detach();
 		void StartProcess();
 		void TerminateProcess(bool force);
 	}
 
 	public class Debugger : IDebugger {
+		private static readonly Encoding ShiftJis;
 		private const string GamePath = @"D:\Games\Private\[Jast] Closed Game [v16700]\ClosedGAME.exe";
+
+		static Debugger() {
+			Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+			ShiftJis = Encoding.GetEncoding("Shift-JIS");
+		}
 
 		private readonly IntPtr _debuggerWindowHandle;
 		private IntPtr _gameWindowHandle;
@@ -56,8 +65,32 @@ namespace MajiroDebugListener {
 				case DebugMessage.Detach:
 					ProcessDetachMessage(message, wParam, lParam);
 					break;
-				case DebugMessage.Heartbeat:
-					SendMessage(DebugMessage.Respond, 0, 0);
+				case DebugMessage.Handshake:
+					SendMessage(DebugMessage.Acknowledge, 0, 0);
+					break;
+			}
+		}
+
+		public void ReceiveData(IntPtr hWnd, IntPtr dwData, Stream stream) {
+			if(_status != DebuggerStatus.Attached) {
+				Error("Unexpected copy command");
+				return;
+			}
+
+			Debug.Assert(hWnd == _gameWindowHandle);
+			Log(LogSeverity.Message, $@"Copy:      {hWnd.ToInt32():X8} {dwData.ToInt32():X8} - {stream.Length} bytes from game");
+
+			switch(dwData.ToInt32()) {
+				case 0:
+					var reader = new BinaryReader(stream, ShiftJis);
+					string scriptName = reader.ReadNullTerminatedString();
+					stream.Seek(0x44, SeekOrigin.Begin);
+					int lineNumber = reader.ReadInt32();
+					Info($@"Triggered breakpoint in script {scriptName}, line {lineNumber}");
+					break;
+
+				default:
+					Warn("Unrecognized data type: " + dwData);
 					break;
 			}
 		}
@@ -131,8 +164,10 @@ namespace MajiroDebugListener {
 				EnableRaisingEvents = true
 			};
 			_gameProcess.Exited += (o, args) => {
+				Info("Game process exited");
 				_gameProcess = null;
 				_gameWindowHandle = IntPtr.Zero;
+				Status = DebuggerStatus.Idle;
 			};
 
 			try {
