@@ -22,9 +22,13 @@ namespace MajiroDebugListener {
 
 		void ProcessMessage(DebugMessage message, long wParam, long lParam);
 		void ReceiveData(IntPtr hWnd, IntPtr dwData, Stream stream);
-		void Detach();
 		void StartProcess();
 		void TerminateProcess(bool force);
+		void Pause();
+		void Resume();
+		void StepIn();
+		void StepOver();
+		void StepOut();
 	}
 
 	public class Debugger : IDebugger {
@@ -66,7 +70,7 @@ namespace MajiroDebugListener {
 					ProcessDetachMessage(message, wParam, lParam);
 					break;
 				case DebugMessage.Handshake:
-					SendMessage(DebugMessage.Acknowledge, 0, 0);
+					SendMessage(DebugMessage.Acknowledge);
 					break;
 			}
 		}
@@ -78,7 +82,7 @@ namespace MajiroDebugListener {
 			}
 
 			Debug.Assert(hWnd == _gameWindowHandle);
-			Log(LogSeverity.Message, $@"Copy:      {hWnd.ToInt32():X8} {dwData.ToInt32():X8} - {stream.Length} bytes from game");
+			Log(LogSeverity.Message, $@"Copy:      {hWnd.ToInt32():X8} {dwData.ToInt32():X8} - {stream.Length} bytes received");
 
 			switch(dwData.ToInt32()) {
 				case 0:
@@ -87,18 +91,13 @@ namespace MajiroDebugListener {
 					stream.Seek(0x44, SeekOrigin.Begin);
 					int lineNumber = reader.ReadInt32();
 					Info($@"Triggered breakpoint in script {scriptName}, line {lineNumber}");
+					SendMessage(DebugMessage.Resume);
 					break;
 
 				default:
 					Warn("Unrecognized data type: " + dwData);
 					break;
 			}
-		}
-
-		private void ProcessDetachMessage(DebugMessage message, long wParam, long lParam) {
-
-			_gameWindowHandle = IntPtr.Zero;
-			Info(@"---------------------------------------");
 		}
 
 		private void ProcessAttachMessage(DebugMessage message, long wParam, long lParam) {
@@ -141,8 +140,9 @@ namespace MajiroDebugListener {
 			}
 		}
 
-		public void Detach() {
-			throw new NotImplementedException();
+		private void ProcessDetachMessage(DebugMessage message, long wParam, long lParam) {
+			_gameWindowHandle = IntPtr.Zero;
+			Status = DebuggerStatus.Idle;
 		}
 
 		public void StartProcess() {
@@ -152,7 +152,7 @@ namespace MajiroDebugListener {
 			}
 
 			if(_status != DebuggerStatus.Idle) {
-				Error("Can only start a game process while in idle state");
+				Error("Can only start a new game process while in idle state");
 				return;
 			}
 
@@ -167,6 +167,7 @@ namespace MajiroDebugListener {
 				Info("Game process exited");
 				_gameProcess = null;
 				_gameWindowHandle = IntPtr.Zero;
+				Info(@"---------------------------------------");
 				Status = DebuggerStatus.Idle;
 			};
 
@@ -204,6 +205,26 @@ namespace MajiroDebugListener {
 					Status = DebuggerStatus.Idle;
 					break;
 			}
+		}
+
+		public void Pause() {
+			throw new NotImplementedException();
+		}
+
+		public void Resume() {
+			throw new NotImplementedException();
+		}
+
+		public void StepIn() {
+			throw new NotImplementedException();
+		}
+
+		public void StepOver() {
+			throw new NotImplementedException();
+		}
+
+		public void StepOut() {
+			throw new NotImplementedException();
 		}
 
 		public void SendMessage(DebugMessage message, long wParam = 0, long lParam = 0) {

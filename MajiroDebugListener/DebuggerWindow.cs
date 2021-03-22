@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -30,7 +29,6 @@ namespace MajiroDebugListener {
 				StatusLabel.Text = $@"Status: {status}";
 				switch(status) {
 					case DebuggerStatus.Idle:
-					case DebuggerStatus.Detached:
 						StartGameButton.Enabled = true;
 						StopGameButton.Enabled = false;
 						break;
@@ -57,7 +55,8 @@ namespace MajiroDebugListener {
 				ProtocolTextBox.Select(ProtocolTextBox.TextLength, 0);
 				ProtocolTextBox.SelectionColor = GetColorBySeverity(severity);
 				ProtocolTextBox.AppendText(message + Environment.NewLine);
-				ProtocolTextBox.Select(selectionStart, selectionLength);
+				if(selectionLength > 0)
+					ProtocolTextBox.Select(selectionStart, selectionLength);
 				ProtocolTextBox.ResumeLayout();
 			});
 		}
@@ -102,6 +101,26 @@ namespace MajiroDebugListener {
 
 		private void StopGameButton_Click(object sender, EventArgs e) {
 			_debugger.TerminateProcess(true);
+		}
+
+		private void PauseButton_Click(object sender, EventArgs e) {
+			_debugger.Pause();
+		}
+
+		private void ResumeButton_Click(object sender, EventArgs e) {
+			_debugger.Resume();
+		}
+
+		private void StepInButton_Click(object sender, EventArgs e) {
+			_debugger.StepIn();
+		}
+
+		private void StepOverButton_Click(object sender, EventArgs e) {
+			_debugger.StepOver();
+		}
+
+		private void StepOutButton_Click(object sender, EventArgs e) {
+			_debugger.StepOut();
 		}
 	}
 }
