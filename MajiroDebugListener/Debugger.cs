@@ -21,7 +21,7 @@ namespace MajiroDebugListener {
 		StatusCallback StatusCallback { get; set; }
 		DebuggerState State { get; }
 
-		void ProcessMessage(DebugMessage message, long wParam, long lParam);
+		void ProcessMessage(DebugMessage message, int wParam, int lParam);
 		void ReceiveData(IntPtr hWnd, IntPtr dwData, int cbData, IntPtr lpData);
 		void StartProcess();
 		void TerminateProcess(bool force);
@@ -61,7 +61,7 @@ namespace MajiroDebugListener {
 
 		#region Message Handling
 
-		public void ProcessMessage(DebugMessage message, long wParam, long lParam) {
+		public void ProcessMessage(DebugMessage message, int wParam, int lParam) {
 			LogMessageReceived(message, wParam, lParam);
 
 			switch(message) {
@@ -77,7 +77,7 @@ namespace MajiroDebugListener {
 			}
 		}
 
-		private void ProcessAttachMessage(DebugMessage message, long wParam, long lParam) {
+		private void ProcessAttachMessage(DebugMessage message, int wParam, int lParam) {
 			Debug.Assert(wParam != 0);
 
 			switch(_state) {
@@ -117,7 +117,7 @@ namespace MajiroDebugListener {
 			}
 		}
 
-		private void ProcessDetachMessage(DebugMessage message, long wParam, long lParam) {
+		private void ProcessDetachMessage(DebugMessage message, int wParam, int lParam) {
 			_gameWindowHandle = IntPtr.Zero;
 			State = DebuggerState.Idle;
 		}
@@ -139,6 +139,16 @@ namespace MajiroDebugListener {
 				case 0:
 					ProcessBreakpointMessage(Marshal.PtrToStructure<BreakpointMessage>(lpData));
 					break;
+				
+				case 1:
+					ProcessDataMessage(Marshal.PtrToStructure<ScriptValue>(lpData));
+					break;
+				
+				case 2:
+					var bytes = new byte[cbData];
+					Marshal.Copy(lpData, bytes, 0, cbData);
+					ProcessStringMessage(bytes.ToNullTerminatedString());
+					break;
 
 				default:
 					Warn("Unrecognized data type: " + dwData);
@@ -158,12 +168,73 @@ namespace MajiroDebugListener {
 			public string ScriptName => _scriptNameRaw.ToNullTerminatedString();
 		}
 
+		private enum ScriptValueType {
+			Int = 0,
+			Float = 1,
+			String = 2,
+			IntArray = 3,
+			FloatArray = 4,
+			StringArray = 5
+		}
+
+		private enum ScriptValueScope {
+			Local = 3
+		}
+
+		[StructLayout(LayoutKind.Explicit)]
+		private struct ScriptValue {
+			[FieldOffset(0x00)]
+			public readonly int Hash;
+			[FieldOffset(0x04)]
+			public readonly ScriptValueType Type;
+			[FieldOffset(0x08)]
+			public readonly ScriptValueScope Scope;
+			[FieldOffset(0x0C)]
+			public readonly int IntValue;
+			[FieldOffset(0x0C)]
+			public readonly float FloatValue;
+		}
+
 		private void ProcessBreakpointMessage(BreakpointMessage message) {
 			string scriptName = message.ScriptName;
 			int lineNumber = message.LineNumber;
 
 			Info($@"Triggered breakpoint in script {scriptName}, line {lineNumber}");
 			State = DebuggerState.Suspended;
+
+			SendMessage(DebugMessage.ReadLocal, 0);
+			SendMessage(DebugMessage.ReadLocal, 1);
+			SendMessage(DebugMessage.ReadLocal, -1);
+			
+			SendMessage(DebugMessage.ReadVar, unchecked((int)0xc5531039));
+			SendMessage(DebugMessage.ReadVar, unchecked((int)0x918278b5));
+			SendMessage(DebugMessage.ReadVar, unchecked((int)0xa17db510));
+		}
+
+		private void ProcessDataMessage(ScriptValue value) {
+
+			switch(value.Type) {
+				case ScriptValueType.Int:
+					Info($@"Received value: {value.Hash:X8} {value.Type} {value.Scope} {value.IntValue}");
+					break;
+
+				case ScriptValueType.Float:
+					Info($@"Received value: {value.Hash:X8} {value.Type} {value.Scope} {value.FloatValue}");
+					break;
+
+				case ScriptValueType.String:
+					Info($@"Received value: {value.Hash:X8} {value.Type} {value.Scope} {value.IntValue:X8}");
+					SendMessage(DebugMessage.ReadString, value.IntValue);
+					break;
+
+				default:
+					Warn($@"Received value: {value.Hash:X8} {value.Type} {value.Scope} {value.IntValue:X8}");
+					break;
+			}
+		}
+
+		private void ProcessStringMessage(string value) {
+			Console.WriteLine($@"Received string: ""{value}""");
 		}
 
 		#endregion
@@ -295,7 +366,7 @@ namespace MajiroDebugListener {
 			State = DebuggerState.Attached;
 		}
 
-		public void SendMessage(DebugMessage message, long wParam = 0, long lParam = 0) {
+		public void SendMessage(DebugMessage message, int wParam = 0, int lParam = 0) {
 			LogMessageSent(message, wParam, lParam);
 			Native.SendMessage(_gameWindowHandle.ToInt32(), (uint)message, wParam, lParam);
 		}
@@ -307,10 +378,10 @@ namespace MajiroDebugListener {
 		public void Warn(string text) => Log(LogSeverity.Warn, text);
 		public void Error(string text) => Log(LogSeverity.Error, text);
 
-		public void LogMessageReceived(DebugMessage message, long wParam, long lParam) =>
+		public void LogMessageReceived(DebugMessage message, int wParam, int lParam) =>
 			Log(LogSeverity.Message, $@"Recv: {(uint)message:X4} {wParam:X8} {lParam:X8} - {message}");
 
-		public void LogMessageSent(DebugMessage message, long wParam, long lParam) =>
+		public void LogMessageSent(DebugMessage message, int wParam, int lParam) =>
 			Log(LogSeverity.Message, $@"Send: {(uint)message:X4} {wParam:X8} {lParam:X8} - {message}");
 
 		#endregion

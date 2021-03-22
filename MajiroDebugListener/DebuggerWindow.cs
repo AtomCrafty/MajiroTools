@@ -94,7 +94,7 @@ namespace MajiroDebugListener {
 				HandleCopyData(ref m);
 			}
 			if(m.Msg >= 0xA000 && m.Msg < 0xC000) {
-				_debugger.ProcessMessage((DebugMessage)m.Msg, m.WParam.ToInt64(), m.LParam.ToInt64());
+				_debugger.ProcessMessage((DebugMessage)m.Msg, m.WParam.ToInt32(), m.LParam.ToInt32());
 			}
 			base.WndProc(ref m);
 		}
