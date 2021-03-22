@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace MajiroDebugListener {
 
-	public delegate void StatusCallback(DebuggerStatus status);
+	public delegate void StatusCallback(DebuggerState state);
 	public delegate void LogCallback(LogSeverity severity, string message);
 
 	public enum LogSeverity {
@@ -18,10 +19,10 @@ namespace MajiroDebugListener {
 
 		LogCallback LogCallback { get; set; }
 		StatusCallback StatusCallback { get; set; }
-		DebuggerStatus Status { get; }
+		DebuggerState State { get; }
 
 		void ProcessMessage(DebugMessage message, long wParam, long lParam);
-		void ReceiveData(IntPtr hWnd, IntPtr dwData, Stream stream);
+		void ReceiveData(IntPtr hWnd, IntPtr dwData, int cbData, IntPtr lpData);
 		void StartProcess();
 		void TerminateProcess(bool force);
 		void Pause();
@@ -32,18 +33,12 @@ namespace MajiroDebugListener {
 	}
 
 	public class Debugger : IDebugger {
-		private static readonly Encoding ShiftJis;
 		private const string GamePath = @"D:\Games\Private\[Jast] Closed Game [v16700]\ClosedGAME.exe";
-
-		static Debugger() {
-			Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-			ShiftJis = Encoding.GetEncoding("Shift-JIS");
-		}
 
 		private readonly IntPtr _debuggerWindowHandle;
 		private IntPtr _gameWindowHandle;
 		private Process _gameProcess;
-		private DebuggerStatus _status = DebuggerStatus.Idle;
+		private DebuggerState _state = DebuggerState.Idle;
 		public Debugger(IntPtr debuggerWindowHandle) {
 			_debuggerWindowHandle = debuggerWindowHandle;
 		}
@@ -51,14 +46,21 @@ namespace MajiroDebugListener {
 		public LogCallback LogCallback { get; set; }
 		public StatusCallback StatusCallback { get; set; }
 
-		public DebuggerStatus Status {
-			get => _status;
+		public DebuggerState State {
+			get => _state;
 			private set {
-				if(_status == value) return;
-				_status = value;
+				if(_state == value) return;
+				_state = value;
 				StatusCallback(value);
 			}
 		}
+
+		public bool IsRunning => _state.IsOneOf(DebuggerState.Waiting, DebuggerState.Attached, DebuggerState.Suspended);
+
+		public bool IsAttached => _state.IsOneOf(DebuggerState.Attached, DebuggerState.Suspended);
+
+		#region Message Handling
+
 		public void ProcessMessage(DebugMessage message, long wParam, long lParam) {
 			LogMessageReceived(message, wParam, lParam);
 
@@ -75,36 +77,11 @@ namespace MajiroDebugListener {
 			}
 		}
 
-		public void ReceiveData(IntPtr hWnd, IntPtr dwData, Stream stream) {
-			if(_status != DebuggerStatus.Attached) {
-				Error("Unexpected copy command");
-				return;
-			}
-
-			Debug.Assert(hWnd == _gameWindowHandle);
-			Log(LogSeverity.Message, $@"Copy:      {hWnd.ToInt32():X8} {dwData.ToInt32():X8} - {stream.Length} bytes received");
-
-			switch(dwData.ToInt32()) {
-				case 0:
-					var reader = new BinaryReader(stream, ShiftJis);
-					string scriptName = reader.ReadNullTerminatedString();
-					stream.Seek(0x44, SeekOrigin.Begin);
-					int lineNumber = reader.ReadInt32();
-					Info($@"Triggered breakpoint in script {scriptName}, line {lineNumber}");
-					SendMessage(DebugMessage.Resume);
-					break;
-
-				default:
-					Warn("Unrecognized data type: " + dwData);
-					break;
-			}
-		}
-
 		private void ProcessAttachMessage(DebugMessage message, long wParam, long lParam) {
 			Debug.Assert(wParam != 0);
 
-			switch(_status) {
-				case DebuggerStatus.Idle: {
+			switch(_state) {
+				case DebuggerState.Idle: {
 						Debug.Assert(_gameWindowHandle == IntPtr.Zero);
 						Debug.Assert(_gameProcess == null);
 
@@ -117,11 +94,11 @@ namespace MajiroDebugListener {
 							Warn("Unable to detect game process");
 						}
 
-						Status = DebuggerStatus.Attached;
+						State = DebuggerState.Attached;
 						break;
 					}
 
-				case DebuggerStatus.Waiting: {
+				case DebuggerState.Waiting: {
 						Debug.Assert(_gameWindowHandle == IntPtr.Zero);
 						Debug.Assert(_gameProcess != null);
 
@@ -130,7 +107,7 @@ namespace MajiroDebugListener {
 
 						Debug.Assert(_gameProcess.Id == processId);
 
-						Status = DebuggerStatus.Attached;
+						State = DebuggerState.Attached;
 						break;
 					}
 
@@ -142,17 +119,58 @@ namespace MajiroDebugListener {
 
 		private void ProcessDetachMessage(DebugMessage message, long wParam, long lParam) {
 			_gameWindowHandle = IntPtr.Zero;
-			Status = DebuggerStatus.Idle;
+			State = DebuggerState.Idle;
 		}
 
-		public void StartProcess() {
-			if(_gameProcess != null) {
-				Error("A game process is already running");
+		#endregion
+
+		#region Data Processing
+
+		public void ReceiveData(IntPtr hWnd, IntPtr dwData, int cbData, IntPtr lpData) {
+			if(_state != DebuggerState.Attached && _state != DebuggerState.Suspended) {
+				Error("Unexpected copy command");
 				return;
 			}
 
-			if(_status != DebuggerStatus.Idle) {
-				Error("Can only start a new game process while in idle state");
+			Debug.Assert(hWnd == _gameWindowHandle);
+			Log(LogSeverity.Message, $@"Copy:      {hWnd.ToInt32():X8} {dwData.ToInt32():X8} - {cbData} bytes received");
+
+			switch(dwData.ToInt32()) {
+				case 0:
+					ProcessBreakpointMessage(Marshal.PtrToStructure<BreakpointMessage>(lpData));
+					break;
+
+				default:
+					Warn("Unrecognized data type: " + dwData);
+					break;
+			}
+		}
+
+		[StructLayout(LayoutKind.Explicit, Size = 0x48)]
+		private struct BreakpointMessage {
+			[FieldOffset(0x00)]
+			[MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x40)]
+			private readonly byte[] _scriptNameRaw;
+
+			[FieldOffset(0x44)]
+			public readonly int LineNumber;
+
+			public string ScriptName => _scriptNameRaw.ToNullTerminatedString();
+		}
+
+		private void ProcessBreakpointMessage(BreakpointMessage message) {
+			string scriptName = message.ScriptName;
+			int lineNumber = message.LineNumber;
+
+			Info($@"Triggered breakpoint in script {scriptName}, line {lineNumber}");
+			State = DebuggerState.Suspended;
+		}
+
+		#endregion
+
+		public void StartProcess() {
+			if(IsRunning) {
+				Error("A game process is already running");
 				return;
 			}
 
@@ -168,7 +186,7 @@ namespace MajiroDebugListener {
 				_gameProcess = null;
 				_gameWindowHandle = IntPtr.Zero;
 				Info(@"---------------------------------------");
-				Status = DebuggerStatus.Idle;
+				State = DebuggerState.Idle;
 			};
 
 			try {
@@ -185,46 +203,96 @@ namespace MajiroDebugListener {
 				return;
 			}
 
-			Status = DebuggerStatus.Waiting;
+			State = DebuggerState.Waiting;
 		}
 
 		public void TerminateProcess(bool force) {
-			switch(_status) {
-				case DebuggerStatus.Waiting:
-				case DebuggerStatus.Attached:
-					Debug.Assert(_status == DebuggerStatus.Attached ^ _gameWindowHandle == IntPtr.Zero);
-					Debug.Assert(_gameProcess != null);
-
-					if(force)
-						_gameProcess.Kill();
-					else
-						_gameProcess.CloseMainWindow();
-
-					_gameWindowHandle = IntPtr.Zero;
-					_gameProcess = null;
-					Status = DebuggerStatus.Idle;
-					break;
+			if(!IsRunning) {
+				Error("There is no game process to terminate");
+				return;
 			}
+
+			Debug.Assert(_state == DebuggerState.Waiting ^ _gameWindowHandle != IntPtr.Zero);
+			Debug.Assert(_gameProcess != null);
+
+			if(force)
+				_gameProcess.Kill();
+			else
+				_gameProcess.CloseMainWindow();
+
+			_gameWindowHandle = IntPtr.Zero;
+			_gameProcess = null;
+			State = DebuggerState.Idle;
 		}
 
 		public void Pause() {
-			throw new NotImplementedException();
+			if(!IsAttached) {
+				Error("No process is attached");
+				return;
+			}
+			if(_state == DebuggerState.Suspended) {
+				Warn("The process is already paused");
+				return;
+			}
+
+			SendMessage(DebugMessage.Pause);
+			State = DebuggerState.Suspended;
 		}
 
 		public void Resume() {
-			throw new NotImplementedException();
+			if(!IsAttached) {
+				Error("No process is attached");
+				return;
+			}
+			if(_state != DebuggerState.Suspended) {
+				Warn("The process is not paused");
+				return;
+			}
+
+			SendMessage(DebugMessage.Resume);
+			State = DebuggerState.Attached;
 		}
 
 		public void StepIn() {
-			throw new NotImplementedException();
+			if(!IsAttached) {
+				Error("No process is attached");
+				return;
+			}
+			if(_state != DebuggerState.Suspended) {
+				Warn("The process is not paused");
+				return;
+			}
+
+			SendMessage(DebugMessage.StepIn);
+			State = DebuggerState.Attached;
 		}
 
 		public void StepOver() {
-			throw new NotImplementedException();
+			if(!IsAttached) {
+				Error("No process is attached");
+				return;
+			}
+			if(_state != DebuggerState.Suspended) {
+				Warn("The process is not paused");
+				return;
+			}
+
+			SendMessage(DebugMessage.Step);
+			State = DebuggerState.Attached;
 		}
 
 		public void StepOut() {
-			throw new NotImplementedException();
+			if(!IsAttached) {
+				Error("No process is attached");
+				return;
+			}
+			if(_state != DebuggerState.Suspended) {
+				Warn("The process is not paused");
+				return;
+			}
+
+			SendMessage(DebugMessage.StepOut);
+			State = DebuggerState.Attached;
 		}
 
 		public void SendMessage(DebugMessage message, long wParam = 0, long lParam = 0) {

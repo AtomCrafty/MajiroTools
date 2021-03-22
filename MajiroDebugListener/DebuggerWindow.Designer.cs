@@ -76,7 +76,7 @@ namespace MajiroDebugListener {
 			this.StatusLabel.Name = "StatusLabel";
 			this.StatusLabel.Size = new System.Drawing.Size(39, 15);
 			this.StatusLabel.TabIndex = 3;
-			this.StatusLabel.Text = "Status";
+			this.StatusLabel.Text = "State";
 			// 
 			// ProtocolTextBox
 			// 

@@ -1,7 +1,8 @@
 ﻿namespace MajiroDebugListener {
-	public enum DebuggerStatus {
+	public enum DebuggerState {
 		Idle,
 		Waiting,
-		Attached
+		Attached,
+		Suspended
 	}
 }

@@ -21,20 +21,31 @@ namespace MajiroDebugListener {
 			};
 
 			DebugFlagTextBox.Text = $@"/DEBUG:{Handle.ToInt32()}";
-			UpdateStatusDisplay(_debugger.Status);
+			UpdateStatusDisplay(_debugger.State);
 		}
 
-		private void UpdateStatusDisplay(DebuggerStatus status) {
+		private void UpdateDebuggerControls(DebuggerState state) {
+			bool isRunning = state == DebuggerState.Attached;
+			bool isSuspended = state == DebuggerState.Suspended;
+			PauseButton.Enabled = isRunning;
+			ResumeButton.Enabled = isSuspended;
+			StepInButton.Enabled = isSuspended;
+			StepOverButton.Enabled = isSuspended;
+			StepOutButton.Enabled = isSuspended;
+		}
+
+		private void UpdateStatusDisplay(DebuggerState state) {
 			Invoke(() => {
-				StatusLabel.Text = $@"Status: {status}";
-				switch(status) {
-					case DebuggerStatus.Idle:
+				StatusLabel.Text = $@"State: {state}";
+				switch(state) {
+					case DebuggerState.Idle:
 						StartGameButton.Enabled = true;
 						StopGameButton.Enabled = false;
 						break;
 
-					case DebuggerStatus.Waiting:
-					case DebuggerStatus.Attached:
+					case DebuggerState.Waiting:
+					case DebuggerState.Attached:
+					case DebuggerState.Suspended:
 						StartGameButton.Enabled = false;
 						StopGameButton.Enabled = true;
 						break;
@@ -44,6 +55,8 @@ namespace MajiroDebugListener {
 						StopGameButton.Enabled = false;
 						break;
 				}
+
+				UpdateDebuggerControls(state);
 			});
 		}
 
@@ -89,38 +102,19 @@ namespace MajiroDebugListener {
 		private void HandleCopyData(ref Message m) {
 			var hWnd = m.WParam;
 			var copyData = Marshal.PtrToStructure<CopyData>(m.LParam);
-			var bytes = new byte[copyData.cbData];
-			Marshal.Copy(copyData.lpData, bytes, 0, bytes.Length);
-			using var stream = new MemoryStream(bytes, false);
-			_debugger.ReceiveData(hWnd, copyData.dwData, stream);
+			_debugger.ReceiveData(hWnd, copyData.dwData, copyData.cbData, copyData.lpData);
+			//var bytes = new byte[copyData.cbData];
+			//Marshal.Copy(copyData.lpData, bytes, 0, bytes.Length);
+			//using var stream = new MemoryStream(bytes, false);
+			//_debugger.ReceiveData(hWnd, copyData.dwData, stream);
 		}
 
-		private void StartGameButton_Click(object sender, EventArgs e) {
-			_debugger.StartProcess();
-		}
-
-		private void StopGameButton_Click(object sender, EventArgs e) {
-			_debugger.TerminateProcess(true);
-		}
-
-		private void PauseButton_Click(object sender, EventArgs e) {
-			_debugger.Pause();
-		}
-
-		private void ResumeButton_Click(object sender, EventArgs e) {
-			_debugger.Resume();
-		}
-
-		private void StepInButton_Click(object sender, EventArgs e) {
-			_debugger.StepIn();
-		}
-
-		private void StepOverButton_Click(object sender, EventArgs e) {
-			_debugger.StepOver();
-		}
-
-		private void StepOutButton_Click(object sender, EventArgs e) {
-			_debugger.StepOut();
-		}
+		private void StartGameButton_Click(object sender, EventArgs e) => _debugger.StartProcess();
+		private void StopGameButton_Click(object sender, EventArgs e) => _debugger.TerminateProcess(true);
+		private void PauseButton_Click(object sender, EventArgs e) => _debugger.Pause();
+		private void ResumeButton_Click(object sender, EventArgs e) => _debugger.Resume();
+		private void StepInButton_Click(object sender, EventArgs e) => _debugger.StepIn();
+		private void StepOverButton_Click(object sender, EventArgs e) => _debugger.StepOver();
+		private void StepOutButton_Click(object sender, EventArgs e) => _debugger.StepOut();
 	}
 }
