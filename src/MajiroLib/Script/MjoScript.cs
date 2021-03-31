@@ -11,6 +11,10 @@ namespace Majiro.Script {
 			Functions = functions;
 			Instructions = instructions;
 		}
+
+		public int InstructionIndexFromOffset(uint offset) {
+			return Instructions.FindIndex(instruction => instruction.Offset == offset);
+		}
 	}
 
 	public struct FunctionEntry {

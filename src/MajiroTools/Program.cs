@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Majiro.Script;
+using Majiro.Script.Analysis;
 
 namespace MajiroTools {
 	static class Program {
@@ -28,7 +29,11 @@ namespace MajiroTools {
 				"get_variable$",
 				"$get_variable$",
 				"get_variable@GLOBAL",
-				"$get_variable@GLOBAL"
+				"$get_variable@GLOBAL",
+				"event_hook",
+				"event_hook@MAJIRO",
+				"$event_hook",
+				"$event_hook@MAJIRO",
 			};
 
 			foreach(string name in names) {
@@ -40,13 +45,33 @@ namespace MajiroTools {
 				Console.Write($"{opcode.Value:X3} {opcode.Mnemonic.PadRight(13)}");
 				Console.WriteLine(opcode.Aliases.Any() ? $" (aliases: {string.Join(", ", opcode.Aliases)})" : "");
 			}
-			*/
+			//*/
 
+			//*
 			using var reader = new BinaryReader(File.OpenRead(@"start.mjo"));
 			var script = Disassembler.DisassembleScript(reader);
-			foreach(var instruction in script.Instructions) {
-				Disassembler.PrintInstruction(instruction);
+			//foreach(var instruction in script.Instructions) {
+			//	Disassembler.PrintInstruction(instruction);
+			//}
+
+			var cfg = ControlFlowGraph.BuildFromScript(script);
+			foreach(var function in cfg.Functions) {
+				Console.ForegroundColor = ConsoleColor.Blue;
+				Console.WriteLine($"func ${function.NameHash:x8}({string.Join(", ", function.ParameterTypes)})");
+				Console.ResetColor();
+				foreach(var basicBlock in function.BasicBlocks) {
+					Console.ForegroundColor = ConsoleColor.Magenta;
+					Console.WriteLine($"{basicBlock.Name}:");
+					Console.ResetColor();
+					foreach(var instruction in basicBlock.Instructions) {
+						Disassembler.PrintInstruction(instruction);
+					}
+					Console.WriteLine();
+				}
+				Console.WriteLine();
 			}
+
+			//*/
 		}
 	}
 }

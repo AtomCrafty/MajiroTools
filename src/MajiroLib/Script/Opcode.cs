@@ -26,6 +26,8 @@ namespace Majiro.Script {
 		// stack transition
 		public readonly string Transition;
 
+		public bool IsJump => Encoding == "j";
+
 		public static readonly IReadOnlyCollection<Opcode> List = Init();
 		public static readonly IReadOnlyDictionary<ushort, Opcode> ByValue = new ReadOnlyDictionary<ushort, Opcode>(List.ToDictionary(op => op.Value));
 
@@ -68,7 +70,7 @@ namespace Majiro.Script {
 					if(allowedTypes == MjoTypeMask.Int)
 						DefineOpcode(baseValue, mnemonic, op, "fho", pop ? "i." : "i.i", aliases.SelectMany(a => new[] { a, a + ".i" }).Prepend(mnemonic + ".i").ToArray());
 					else
-						DefineOpcode(baseValue, mnemonic+".i", op, "fho", pop ? "i." : "i.i", aliases.SelectMany(a => new[] { a + ".i", a }).Prepend(mnemonic).ToArray());
+						DefineOpcode(baseValue, mnemonic + ".i", op, "fho", pop ? "i." : "i.i", aliases.SelectMany(a => new[] { a + ".i", a }).Prepend(mnemonic).ToArray());
 
 				if(allowedTypes.HasFlag(MjoTypeMask.Float))
 					DefineOpcode(baseValue + 1, mnemonic + ".r", op, "fho", pop ? "n." : "n.f", aliases.Select(a => a + ".r").ToArray());

@@ -132,6 +132,8 @@ namespace Majiro.Script {
 				}
 			}
 
+			instruction.Size = (uint)(reader.BaseStream.Position - offset);
+
 			return instruction;
 		}
 
@@ -198,8 +200,13 @@ namespace Majiro.Script {
 
 					case 'j':
 						// jump offset
-						sb.Append('@');
-						sb.Append(instruction.JumpOffset);
+						if(instruction.JumpTarget != null) {
+							sb.Append('@');
+							sb.Append(instruction.JumpTarget.Name);
+						}
+						else {
+							sb.Append($"@~{instruction.JumpOffset:x4}");
+						}
 						break;
 
 					case 'l':
@@ -211,11 +218,20 @@ namespace Majiro.Script {
 					case 'c':
 						// switch case table
 						bool first = true;
-						foreach(short offset in instruction.SwitchCases) {
-							if(!first) sb.Append(", ");
-							sb.Append('@');
-							sb.Append(instruction.JumpOffset);
-							first = false;
+						if(instruction.SwitchTargets != null) {
+							foreach(var targetBlock in instruction.SwitchTargets) {
+								if(!first) sb.Append(", ");
+								sb.Append('@');
+								sb.Append(targetBlock.Name);
+								first = false;
+							}
+						}
+						else {
+							foreach(short offset in instruction.SwitchCases) {
+								if(!first) sb.Append(", ");
+								sb.Append($"@~{offset:x4}");
+								first = false;
+							}
 						}
 						break;
 				}
@@ -241,7 +257,7 @@ namespace Majiro.Script {
 						// type list
 						Console.Write('[');
 						bool first = true;
-						foreach(MjoType type in instruction.TypeList) {
+						foreach(var type in instruction.TypeList) {
 							if(!first) Console.Write(", ");
 							Console.ForegroundColor = ConsoleColor.Cyan;
 							Console.Write(type);
@@ -260,14 +276,33 @@ namespace Majiro.Script {
 						Console.ResetColor();
 						break;
 
-					case 'f':
-						// flags
-						Console.Write(instruction.Flags); // todo proper keywords
-						break;
+					case 'f': {
+							// flags
+							var keywords = new List<string>();
+							var flags = instruction.Flags;
+							keywords.Add(flags.Scope().ToString().ToLower());
+							keywords.Add(flags.Type().ToString().ToLower());
+							var invert = flags.InvertMode();
+							if(invert != MjoInvertMode.None) keywords.Add("invert_" + invert.ToString().ToLower());
+							var modifier = flags.Modifier();
+							if(modifier != MjoModifier.None) keywords.Add("modify_" + modifier.ToString().ToLower());
+							var dimension = flags.Dimension();
+							if(dimension != 0) keywords.Add("dim" + dimension);
+
+							Console.ForegroundColor = ConsoleColor.Cyan;
+							Console.Write(string.Join(" ", keywords));
+							Console.ResetColor();
+							break;
+						}
 
 					case 'h':
 						// name hash
-						Console.ForegroundColor = ConsoleColor.Yellow;
+						if(instruction.IsSysCall)
+							Console.ForegroundColor = ConsoleColor.Yellow;
+						else if(instruction.IsCall)
+							Console.ForegroundColor = ConsoleColor.Blue;
+						else
+							Console.ForegroundColor = ConsoleColor.Red;
 						Console.Write('$');
 						Console.Write(instruction.Hash.ToString("x8"));
 						Console.ResetColor();
@@ -302,8 +337,13 @@ namespace Majiro.Script {
 					case 'j':
 						// jump offset
 						Console.ForegroundColor = ConsoleColor.Magenta;
-						Console.Write('@');
-						Console.Write(instruction.JumpOffset);
+						if(instruction.JumpTarget != null) {
+							Console.Write('@');
+							Console.Write(instruction.JumpTarget.Name);
+						}
+						else {
+							Console.Write($"@~{instruction.JumpOffset:x4}");
+						}
 						Console.ResetColor();
 						break;
 
@@ -318,13 +358,20 @@ namespace Majiro.Script {
 					case 'c':
 						// switch case table
 						first = true;
-						foreach(short offset in instruction.SwitchCases) {
-							if(!first) Console.Write(", ");
-							Console.ForegroundColor = ConsoleColor.Magenta;
-							Console.Write('@');
-							Console.Write(offset);
-							Console.ResetColor();
-							first = false;
+						if(instruction.SwitchTargets != null) {
+							foreach(var targetBlock in instruction.SwitchTargets) {
+								if(!first) Console.Write(", ");
+								Console.Write('@');
+								Console.Write(targetBlock.Name);
+								first = false;
+							}
+						}
+						else {
+							foreach(short offset in instruction.SwitchCases) {
+								if(!first) Console.Write(", ");
+								Console.Write($"@~{offset:x4}");
+								first = false;
+							}
 						}
 						break;
 				}
