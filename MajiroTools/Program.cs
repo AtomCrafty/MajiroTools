@@ -1,50 +1,52 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Text;
+using Majiro.Script;
 
 namespace MajiroTools {
 	static class Program {
 		private static readonly Encoding ShiftJis;
-		private static readonly uint[] CrcTable;
 
 		static Program() {
 			Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 			ShiftJis = Encoding.GetEncoding("Shift-JIS");
-			CrcTable = Enumerable.Range(0, 256).Select(Crc32).ToArray();
-		}
-
-		static uint Crc32(int seed) {
-			const uint mask = 0xEDB88320;
-			uint value = (uint) seed;
-			for(int i = 0; i < 8; i++) {
-				value = (value & 1) != 0 ? (value >> 1) ^ mask : value >> 1;
-			}
-			return value;
-		}
-
-		static uint Hash(string s) {
-			var bytes = ShiftJis.GetBytes(s);
-			uint result = 0xFFFFFFFF;
-			foreach(byte b in bytes) {
-				result = (result >> 8) ^ CrcTable[(byte)(result ^ b)];
-			}
-			return ~result;
 		}
 
 		static void PrintHash(string name) {
-			Console.WriteLine($"{Hash(name):X8} {name}");
+			Console.WriteLine($"{Crc32.Hash(name):x8} {name}");
 		}
 
 		static void Main(string[] args) {
-			PrintHash("$init@GLOBAL");
-			PrintHash("get_variable");
-			PrintHash("$get_variable");
-			PrintHash("get_variable@");
-			PrintHash("$get_variable@");
-			PrintHash("get_variable$");
-			PrintHash("$get_variable$");
-			PrintHash("get_variable@GLOBAL");
-			PrintHash("$get_variable@GLOBAL");
+			var names = new[] {
+				"X_CONTROL", "CONSOLE_WROTE", "CONSOLE_CLS", "CONSOLE_ON", "CONSOLE_OFF", "CONSOLE_OFF", "PAUSE", "CRLF", "NAME_DISP", "CONSOLE_CLS", "CONSOLE_OFF", "CONSOLE_ON", "HOT_RESET",
+				"$init@GLOBAL",
+				"get_variable",
+				"$get_variable",
+				"get_variable@",
+				"$get_variable@",
+				"get_variable$",
+				"$get_variable$",
+				"get_variable@GLOBAL",
+				"$get_variable@GLOBAL"
+			};
+
+			foreach(string name in names) {
+				PrintHash(name);
+			}
+
+			/*
+			foreach(var opcode in Opcode.List) {
+				Console.Write($"{opcode.Value:X3} {opcode.Mnemonic.PadRight(13)}");
+				Console.WriteLine(opcode.Aliases.Any() ? $" (aliases: {string.Join(", ", opcode.Aliases)})" : "");
+			}
+			*/
+
+			using var reader = new BinaryReader(File.OpenRead(@"start.mjo"));
+			var script = Disassembler.DisassembleScript(reader);
+			foreach(var instruction in script.Instructions) {
+				Disassembler.PrintInstruction(instruction);
+			}
 		}
 	}
 }

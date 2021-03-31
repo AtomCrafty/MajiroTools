@@ -3,9 +3,14 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31025.194
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MajiroTools", "MajiroTools\MajiroTools.csproj", "{98987418-D142-4D0A-86D0-59DFADB8272F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MajiroTools", "MajiroTools\MajiroTools.csproj", "{98987418-D142-4D0A-86D0-59DFADB8272F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{AA8B1D03-AEAD-4922-938B-EF32F3455229} = {AA8B1D03-AEAD-4922-938B-EF32F3455229}
+	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MajiroDebugListener", "MajiroDebugListener\MajiroDebugListener.csproj", "{56E2F3B0-9423-42D3-82B2-BC1D33E30177}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MajiroDebugListener", "MajiroDebugListener\MajiroDebugListener.csproj", "{56E2F3B0-9423-42D3-82B2-BC1D33E30177}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MajiroLib", "MajiroLib\MajiroLib.csproj", "{AA8B1D03-AEAD-4922-938B-EF32F3455229}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +26,10 @@ Global
 		{56E2F3B0-9423-42D3-82B2-BC1D33E30177}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{56E2F3B0-9423-42D3-82B2-BC1D33E30177}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{56E2F3B0-9423-42D3-82B2-BC1D33E30177}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA8B1D03-AEAD-4922-938B-EF32F3455229}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA8B1D03-AEAD-4922-938B-EF32F3455229}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA8B1D03-AEAD-4922-938B-EF32F3455229}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA8B1D03-AEAD-4922-938B-EF32F3455229}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
