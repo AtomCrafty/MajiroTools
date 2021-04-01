@@ -15,7 +15,7 @@ namespace MajiroTools {
 		}
 
 		static void PrintHash(string name) {
-			Console.WriteLine($"{Crc32.Hash(name):x8} {name}");
+			Console.WriteLine($"{Crc.Hash32(name):x8} {name}");
 		}
 
 		static void Main(string[] args) {

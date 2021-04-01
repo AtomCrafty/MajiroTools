@@ -26,7 +26,7 @@ namespace Majiro.Script {
 
 			int byteCodeSize = reader.ReadInt32();
 			var byteCode = reader.ReadBytes(byteCodeSize);
-			if(isEncrypted) Crc32.Crypt(byteCode);
+			if(isEncrypted) Crc.Crypt32(byteCode);
 			using var ms = new MemoryStream(byteCode);
 
 			var instructions = DisassembleByteCode(ms);
