@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
@@ -88,19 +87,19 @@ namespace Majiro.Script {
 					DefineOpcode(baseValue + 5, mnemonic + ".sarr", op, "fho", pop ? "S." : "S.S", aliases.Select(a => a + ".sarr").ToArray());
 			}
 
-			void DefineArrayAssignmentOperator(ushort baseValue, string mnemonic, string op, MjoTypeMask allowedTypes, bool pop) {
+			void DefineArrayAssignmentOperator(ushort baseValue, string mnemonic, string op, MjoTypeMask allowedTypes, bool pop, params string[] aliases) {
 
 				if(allowedTypes.HasFlag(MjoTypeMask.Int))
 					if(allowedTypes == MjoTypeMask.Int)
-						DefineOpcode(baseValue, mnemonic, op, "fho", pop ? "i[i#d]." : "i[i#d].i");
+						DefineOpcode(baseValue, mnemonic, op, "fho", pop ? "i[i#d]." : "i[i#d].i", aliases.SelectMany(a => new[] { a, a + ".i" }).Prepend(mnemonic + ".i").ToArray());
 					else
-						DefineOpcode(baseValue, mnemonic + ".i", op, "fho", pop ? "i[i#d]." : "i[i#d].i");
+						DefineOpcode(baseValue, mnemonic + ".i", op, "fho", pop ? "i[i#d]." : "i[i#d].i", aliases.SelectMany(a => new[] { a + ".i", a }).Prepend(mnemonic).ToArray());
 
 				if(allowedTypes.HasFlag(MjoTypeMask.Float))
-					DefineOpcode(baseValue + 1, mnemonic + ".r", op, "fho", pop ? "n[i#d]." : "n[i#d].f");
+					DefineOpcode(baseValue + 1, mnemonic + ".r", op, "fho", pop ? "n[i#d]." : "n[i#d].f", aliases.Select(a => a + ".r").ToArray());
 
 				if(allowedTypes.HasFlag(MjoTypeMask.String))
-					DefineOpcode(baseValue + 2, mnemonic + ".s", op, "fho", pop ? "s[i#d]." : "s[i#d].s");
+					DefineOpcode(baseValue + 2, mnemonic + ".s", op, "fho", pop ? "s[i#d]." : "s[i#d].s", aliases.Select(a => a + ".s").ToArray());
 			}
 			
 #pragma warning disable format
@@ -141,7 +140,7 @@ namespace Majiro.Script {
 				DefineAssignmentOperator(0x1b0, "st",     "=",   MjoTypeMask.All, false);
 				DefineAssignmentOperator(0x1b8, "st.mul", "*=",  MjoTypeMask.Numeric, false);
 				DefineAssignmentOperator(0x1c0, "st.div", "/=",  MjoTypeMask.Numeric, false);
-				DefineAssignmentOperator(0x1c8, "st.mod", "%=",  MjoTypeMask.Int, false);
+				DefineAssignmentOperator(0x1c8, "st.rem", "%=",  MjoTypeMask.Int, false, "st.mod");
 				DefineAssignmentOperator(0x1d0, "st.add", "+=",  MjoTypeMask.Primitive, false);
 				DefineAssignmentOperator(0x1d8, "st.sub", "-=",  MjoTypeMask.Numeric, false);
 				DefineAssignmentOperator(0x1e0, "st.shl", "<<=", MjoTypeMask.Int, false);
@@ -153,7 +152,7 @@ namespace Majiro.Script {
 				DefineAssignmentOperator(0x210, "stp",     "=",   MjoTypeMask.All, true);
 				DefineAssignmentOperator(0x218, "stp.mul", "*=",  MjoTypeMask.Numeric, true);
 				DefineAssignmentOperator(0x220, "stp.div", "/=",  MjoTypeMask.Numeric, true);
-				DefineAssignmentOperator(0x228, "stp.mod", "%=",  MjoTypeMask.Int, true);
+				DefineAssignmentOperator(0x228, "stp.rem", "%=",  MjoTypeMask.Int, true, "stp.mod");
 				DefineAssignmentOperator(0x230, "stp.add", "+=",  MjoTypeMask.Primitive, true);
 				DefineAssignmentOperator(0x238, "stp.sub", "-=",  MjoTypeMask.Numeric, true);
 				DefineAssignmentOperator(0x240, "stp.shl", "<<=", MjoTypeMask.Int, true);
@@ -167,7 +166,7 @@ namespace Majiro.Script {
 				DefineArrayAssignmentOperator(0x270, "stelem",     "=",   MjoTypeMask.All, false);
 				DefineArrayAssignmentOperator(0x278, "stelem.mul", "*=",  MjoTypeMask.Numeric, false);
 				DefineArrayAssignmentOperator(0x280, "stelem.div", "/=",  MjoTypeMask.Numeric, false);
-				DefineArrayAssignmentOperator(0x288, "stelem.mod", "%=",  MjoTypeMask.Int, false);
+				DefineArrayAssignmentOperator(0x288, "stelem.rem", "%=", MjoTypeMask.Int, false, "stelem.mod");
 				DefineArrayAssignmentOperator(0x290, "stelem.add", "+=",  MjoTypeMask.Primitive, false);
 				DefineArrayAssignmentOperator(0x298, "stelem.sub", "-=",  MjoTypeMask.Numeric, false);
 				DefineArrayAssignmentOperator(0x2a0, "stelem.shl", "<<=", MjoTypeMask.Int, false);
@@ -179,7 +178,7 @@ namespace Majiro.Script {
 				DefineArrayAssignmentOperator(0x2d0, "stelemp",     "=",   MjoTypeMask.All, true);
 				DefineArrayAssignmentOperator(0x2d8, "stelemp.mul", "*=",  MjoTypeMask.Numeric, true);
 				DefineArrayAssignmentOperator(0x2e0, "stelemp.div", "/=",  MjoTypeMask.Numeric, true);
-				DefineArrayAssignmentOperator(0x2e8, "stelemp.mod", "%=",  MjoTypeMask.Int, true);
+				DefineArrayAssignmentOperator(0x2e8, "stelemp.rem", "%=",  MjoTypeMask.Int, true, "stelemp.mod");
 				DefineArrayAssignmentOperator(0x2f0, "stelemp.add", "+=",  MjoTypeMask.Primitive, true);
 				DefineArrayAssignmentOperator(0x2f8, "stelemp.sub", "-=",  MjoTypeMask.Numeric, true);
 				DefineArrayAssignmentOperator(0x300, "stelemp.shl", "<<=", MjoTypeMask.Int, true);
@@ -199,7 +198,7 @@ namespace Majiro.Script {
 				DefineOpcode(0x810, "callp", null, "h0a", "[*#a].");
 
 				DefineOpcode(0x829, "alloca", null, "t", ".[#t]");
-				DefineOpcode(0x82b, "return", null, "", "[*].");
+				DefineOpcode(0x82b, "ret", null, "", "[*].", "return");
 
 				DefineOpcode(0x82c, "br", null, "j", ".", "jmp");
 				DefineOpcode(0x82d, "brtrue", null, "j", "p.", "jnz", "jne");
@@ -207,37 +206,37 @@ namespace Majiro.Script {
 
 				DefineOpcode(0x82f, "pop", null, "", "*.");
 				
-				DefineOpcode(0x830, "jmp.v", null, "j", "p.1");
-				DefineOpcode(0x831, "jne.v", null, "j", "p.1");
-				DefineOpcode(0x832, "jgt.v", null, "j", "p.1");
-				DefineOpcode(0x833, "jge.v", null, "j", "p.1");
-				DefineOpcode(0x838, "jle.v", null, "j", "p.1");
-				DefineOpcode(0x839, "jlt.v", null, "j", "p.1");
+				DefineOpcode(0x830, "br.v", null, "j", "p.", "jmp.v");
+				DefineOpcode(0x831, "bne.v", null, "j", "p.", "jne.v");
+				DefineOpcode(0x832, "bgt.v", null, "j", "p.", "jgt.v");
+				DefineOpcode(0x833, "bge.v", null, "j", "p.", "jge.v");
+				DefineOpcode(0x838, "ble.v", null, "j", "p.", "jle.v");
+				DefineOpcode(0x839, "blt.v", null, "j", "p.", "jlt.v");
 				
 				DefineOpcode(0x834, "syscall",  null, "ha", "[*#a].*");
 				DefineOpcode(0x835, "syscallp", null, "ha", "[*#a].");
 				
-				DefineOpcode(0x836, "argcheck", null, "t", ".");
+				DefineOpcode(0x836, "argcheck", null, "t", ".[#t]", "sigchk");
 				
 				DefineOpcode(0x837, "ldelem", null, "ha", "[i#d].~#t");
 
 				DefineOpcode(0x83a, "line", null, "l", ".");
 				
-				DefineOpcode(0x83b, "op.83b", null, "j", "???");
-				DefineOpcode(0x83c, "op.83c", null, "j", "???");
-				DefineOpcode(0x83d, "op.83d", null, "j", "???");
+				DefineOpcode(0x83b, "bsel.1", null, "j", ".");
+				DefineOpcode(0x83c, "bsel.3", null, "j", ".");
+				DefineOpcode(0x83d, "bsel.2", null, "j", ".");
 				
 				DefineOpcode(0x83e, "conv.i", null, "", "f.i");
 				DefineOpcode(0x83f, "conv.r", null, "", "i.f");
 				
 				DefineOpcode(0x840, "text", null, "s", ".");
-				DefineOpcode(0x841, "op.841", null, "", "???");
-				DefineOpcode(0x842, "op.842", null, "s", "???");
-				DefineOpcode(0x843, "op.843", null, "j", ".");
-				DefineOpcode(0x844, "op.844", null, "", ".");
-				DefineOpcode(0x845, "op.845", null, "j", ".");
-				DefineOpcode(0x846, "op.846", null, "", ".");
-				DefineOpcode(0x847, "op.847", null, "j", ".");
+				DefineOpcode(0x841, "proc", null, "", ".");
+				DefineOpcode(0x842, "ctrl", null, "s", "[#s].");
+				DefineOpcode(0x843, "bsel.x", null, "j", ".");
+				DefineOpcode(0x844, "bsel.clr", null, "", ".");
+				DefineOpcode(0x845, "bsel.4", null, "j", ".");
+				DefineOpcode(0x846, "bsel.jmp.4", null, "", ".");
+				DefineOpcode(0x847, "bsel.5", null, "j", ".");
 
 				DefineOpcode(0x850, "switch", null, "c", "i.");
 			}
