@@ -3,19 +3,15 @@ using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace Majiro.Script.Analysis.ControlFlow {
-	public class ControlFlowGraph {
+	public static class ControlFlowPass {
 
-		public readonly List<Function> Functions;
-		public ControlFlowGraph(List<Function> functions) {
-			Functions = functions;
-		}
-
-		public static ControlFlowGraph BuildFromScript(MjoScript script) {
+		public static void Analyze(MjoScript script) {
 			var startIndices = new HashSet<int>();
 			var functions = new List<Function>();
+			script.Functions = functions;
 
 			// mark function start indices
-			foreach(var functionEntry in script.Functions) {
+			foreach(var functionEntry in script.Index) {
 				uint offset = functionEntry.Offset;
 				int index = script.InstructionIndexFromOffset(offset);
 				if(index < 0) throw new Exception($"No instruction found at offset 0x{offset:x8}");
@@ -42,8 +38,6 @@ namespace Majiro.Script.Analysis.ControlFlow {
 			foreach(var function in functions) {
 				AnalyzeFunction(function);
 			}
-
-			return new ControlFlowGraph(functions);
 		}
 
 		public static IEnumerable<uint> PossibleNextInstructionOffsets(Instruction instruction) {

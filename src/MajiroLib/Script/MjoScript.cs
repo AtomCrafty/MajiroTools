@@ -1,14 +1,17 @@
 ﻿using System.Collections.Generic;
+using Majiro.Script.Analysis.ControlFlow;
 
 namespace Majiro.Script {
 	public class MjoScript {
 		public uint EntryPointIndex;
-		public readonly List<FunctionEntry> Functions;
+		public readonly List<FunctionEntry> Index;
 		public readonly List<Instruction> Instructions;
 
-		public MjoScript(uint entryPointIndex, List<FunctionEntry> functions, List<Instruction> instructions) {
+		public List<Function> Functions;
+
+		public MjoScript(uint entryPointIndex, List<FunctionEntry> index, List<Instruction> instructions) {
 			EntryPointIndex = entryPointIndex;
-			Functions = functions;
+			Index = index;
 			Instructions = instructions;
 		}
 

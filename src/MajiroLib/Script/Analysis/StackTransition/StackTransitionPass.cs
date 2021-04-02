@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
 using Majiro.Script.Analysis.ControlFlow;
 
 namespace Majiro.Script.Analysis.StackTransition {
-	public class StackTransitionGraph {
+	public static class StackTransitionPass {
 
 		public static void WriteStackState(StackState state) {
 			for(int i = 0; i < state.Values.Count; i++) {
@@ -59,7 +58,61 @@ namespace Majiro.Script.Analysis.StackTransition {
 			}
 		}
 
-		public static StackState InitStartState(BasicBlock block) {
+		public static void Analyze(MjoScript script) => script.Functions.ForEach(Analyze);
+
+		public static void Analyze(Function function) {
+			Disassembler.PrintFunctionHeader(function);
+			var blocks = function.BasicBlocks.ToList();
+			blocks.PreOrderSort(block => block.Successors);
+
+			foreach(var block in blocks) {
+				Disassembler.PrintLabel(block);
+				Console.ForegroundColor = ConsoleColor.DarkGray;
+				//Console.WriteLine("// predecessors: " + string.Join(", ", block.Predecessors.Select(p =>
+				//	$"{p.Name} (end stack size {p.EndState?.StackTop.ToString() ?? "unknown"})")));
+
+				var state = InitStartState(block);
+
+				foreach(var phi in block.PhiNodes) {
+					WriteStackState(phi.StackState);
+					Console.CursorLeft = 40;//74;
+					Console.ForegroundColor = ConsoleColor.Red;
+					Disassembler.PrintInstruction(phi);
+				}
+
+				//if(false)
+				foreach(var instruction in block.Instructions) {
+					//WriteStackState(state);
+					//Console.CursorLeft = 35;
+					//Console.ForegroundColor = ConsoleColor.DarkGray;
+					//Console.Write(" -> ");
+
+					SimulateTransition(state, instruction);
+
+					WriteStackState(state);
+					Console.CursorLeft = 40;//74;
+					Disassembler.PrintInstruction(instruction);
+
+					// the argcheck instruction determines the stack base
+					if(instruction.IsArgCheck)
+						state.StackBase = state.StackTop;
+					if(instruction.IsAlloca)
+						state.LocalCount = state.StackTop - state.StackBase;
+
+					instruction.StackState = state.Clone();
+				}
+
+				CheckStateCompatibility(block.Successors.Select(pre => pre.StartState).Prepend(state));
+
+				block.EndState = state;
+				Console.ForegroundColor = ConsoleColor.DarkGray;
+				//Console.WriteLine("// successors: " + string.Join(", ", block.Successors.Select(s =>
+				//	$"{s.Name} (start stack size {s.StartState?.StackTop.ToString() ?? "unknown"})")));
+				Console.WriteLine();
+			}
+		}
+
+		private static StackState InitStartState(BasicBlock block) {
 			block.PhiNodes = new List<PhiInstruction>();
 
 			StackState startState;
@@ -284,10 +337,10 @@ namespace Majiro.Script.Analysis.StackTransition {
 			PushResultValues(state, instruction, index, transition, popped);
 		}
 
-		public static void CheckStateCompatibility(IEnumerable<StackState> states) =>
+		private static void CheckStateCompatibility(IEnumerable<StackState> states) =>
 			CheckStateCompatibility(null, states.ToList(), false, out _);
 
-		public static void CheckStateCompatibility(BasicBlock block, IEnumerable<StackState> states, out StackState merged) =>
+		private static void CheckStateCompatibility(BasicBlock block, IEnumerable<StackState> states, out StackState merged) =>
 			CheckStateCompatibility(block, states.ToList(), true, out merged);
 
 		private static void CheckStateCompatibility(BasicBlock block, IList<StackState> statesWithNull, bool merge, out StackState merged) {
@@ -364,60 +417,6 @@ namespace Majiro.Script.Analysis.StackTransition {
 				if(createdPhi) {
 					producer.StackState = merged.Clone();
 				}
-			}
-		}
-
-		public static void Analyze(ControlFlowGraph cfg) => cfg.Functions.ForEach(Analyze);
-
-		public static void Analyze(Function function) {
-			Disassembler.PrintFunctionHeader(function);
-			var blocks = function.BasicBlocks.ToList();
-			blocks.PreOrderSort(block => block.Successors);
-
-			foreach(var block in blocks) {
-				Disassembler.PrintLabel(block);
-				Console.ForegroundColor = ConsoleColor.DarkGray;
-				//Console.WriteLine("// predecessors: " + string.Join(", ", block.Predecessors.Select(p =>
-				//	$"{p.Name} (end stack size {p.EndState?.StackTop.ToString() ?? "unknown"})")));
-
-				var state = InitStartState(block);
-
-				foreach(var phi in block.PhiNodes) {
-					WriteStackState(phi.StackState);
-					Console.CursorLeft = 40;//74;
-					Console.ForegroundColor = ConsoleColor.Red;
-					Disassembler.PrintInstruction(phi);
-				}
-
-				//if(false)
-				foreach(var instruction in block.Instructions) {
-					//WriteStackState(state);
-					//Console.CursorLeft = 35;
-					//Console.ForegroundColor = ConsoleColor.DarkGray;
-					//Console.Write(" -> ");
-
-					SimulateTransition(state, instruction);
-
-					WriteStackState(state);
-					Console.CursorLeft = 40;//74;
-					Disassembler.PrintInstruction(instruction);
-
-					// the argcheck instruction determines the stack base
-					if(instruction.IsArgCheck)
-						state.StackBase = state.StackTop;
-					if(instruction.IsAlloca)
-						state.LocalCount = state.StackTop - state.StackBase;
-
-					instruction.StackState = state.Clone();
-				}
-
-				CheckStateCompatibility(block.Successors.Select(pre => pre.StartState).Prepend(state));
-
-				block.EndState = state;
-				Console.ForegroundColor = ConsoleColor.DarkGray;
-				//Console.WriteLine("// successors: " + string.Join(", ", block.Successors.Select(s =>
-				//	$"{s.Name} (start stack size {s.StartState?.StackTop.ToString() ?? "unknown"})")));
-				Console.WriteLine();
 			}
 		}
 	}

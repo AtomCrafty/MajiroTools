@@ -66,15 +66,15 @@ namespace MajiroTools {
 			using var reader = new BinaryReader(File.OpenRead(@"start.mjo"));
 			var script = Disassembler.DisassembleScript(reader);
 
-			var cfg = ControlFlowGraph.BuildFromScript(script);
-			StackTransitionGraph.Analyze(cfg);
+			ControlFlowPass.Analyze(script);
+			StackTransitionPass.Analyze(script);
 
-			foreach(var function in cfg.Functions) {
+			foreach(var function in script.Functions) {
 				Disassembler.PrintFunctionHeader(function);
 				foreach(var block in function.BasicBlocks) {
 					Disassembler.PrintLabel(block);
 					foreach(var instruction in block.PhiNodes.Concat(block.Instructions)) {
-						StackTransitionGraph.WriteStackState(instruction.StackState);
+						StackTransitionPass.WriteStackState(instruction.StackState);
 						Console.CursorLeft = 40;
 						Disassembler.PrintInstruction(instruction);
 					}
