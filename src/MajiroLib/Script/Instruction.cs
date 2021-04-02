@@ -1,4 +1,5 @@
 ﻿using Majiro.Script.Analysis;
+using Majiro.Script.Analysis.ControlFlow;
 
 namespace Majiro.Script {
 	public sealed class Instruction {

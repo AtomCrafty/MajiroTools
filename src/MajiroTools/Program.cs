@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Majiro.Script;
 using Majiro.Script.Analysis;
+using Majiro.Script.Analysis.ControlFlow;
 
 namespace MajiroTools {
 	static class Program {

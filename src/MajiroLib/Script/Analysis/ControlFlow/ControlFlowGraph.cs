@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Majiro.Script.Analysis {
+namespace Majiro.Script.Analysis.ControlFlow {
 	public class ControlFlowGraph {
 
 		public readonly List<Function> Functions;
@@ -54,9 +54,14 @@ namespace Majiro.Script.Analysis {
 				yield break;
 			}
 
-			if(instruction.SwitchCases != null) {
-				foreach(short caseOffset in instruction.SwitchCases) {
-					yield return (uint)(instruction.Offset + instruction.Size + caseOffset);
+			if(instruction.IsSwitch) {
+				for(int i = 0; i < instruction.SwitchCases.Length; i++) {
+					int caseOffset = instruction.SwitchCases[i];
+					yield return (uint)(instruction.Offset
+										+ 4     // opcode and case count operand
+										+ 4 * i // offset of the case offset
+										+ 4     // size of the case offset
+										+ caseOffset);
 				}
 			}
 		}
@@ -150,7 +155,7 @@ namespace Majiro.Script.Analysis {
 			else if(lastInstruction.IsSwitch) {
 				lastInstruction.SwitchTargets = new BasicBlock[lastInstruction.SwitchCases.Length];
 				for(int i = 0; i < lastInstruction.SwitchCases.Length; i++) {
-					short caseOffset = lastInstruction.SwitchCases[i];
+					int caseOffset = lastInstruction.SwitchCases[i];
 					uint target = (uint)(lastInstruction.Offset + lastInstruction.Size + caseOffset);
 					lastInstruction.SwitchTargets[i] = function.BasicBlockFromOffset(target);
 				}

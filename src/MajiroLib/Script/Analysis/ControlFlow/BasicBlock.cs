@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace Majiro.Script.Analysis {
+namespace Majiro.Script.Analysis.ControlFlow {
 	public class BasicBlock {
 		public readonly Function Function;
 
