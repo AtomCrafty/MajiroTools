@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Majiro.Script.Analysis.ControlFlow {
 	public class ControlFlowGraph {
@@ -47,11 +48,14 @@ namespace Majiro.Script.Analysis.ControlFlow {
 
 		public static IEnumerable<uint> PossibleNextInstructionOffsets(Instruction instruction) {
 
-			yield return instruction.Offset + instruction.Size;
-
-			if(instruction.Opcode.IsJump) {
-				yield return (uint)(instruction.Offset + instruction.Size + instruction.JumpOffset);
+			if(instruction.IsReturn)
 				yield break;
+
+			if(instruction.IsJump) {
+				yield return (uint)(instruction.Offset + instruction.Size + instruction.JumpOffset);
+
+				if(instruction.IsUnconditionalJump)
+					yield break;
 			}
 
 			if(instruction.IsSwitch) {
@@ -63,7 +67,10 @@ namespace Majiro.Script.Analysis.ControlFlow {
 										+ 4     // size of the case offset
 										+ caseOffset);
 				}
+				yield break;
 			}
+
+			yield return instruction.Offset + instruction.Size;
 		}
 
 		public static void AnalyzeFunction(Function function) {
@@ -100,8 +107,11 @@ namespace Majiro.Script.Analysis.ControlFlow {
 					foreach(uint offset in PossibleNextInstructionOffsets(instruction)) {
 						MarkBasicBlockStart(offset);
 					}
+					// instruction after a jump is always a new basic block
+					startIndices.Add(i + 1);
 				}
 				else if(instruction.IsArgCheck) {
+					Debug.Assert(function.ParameterTypes == null);
 					function.ParameterTypes = instruction.TypeList;
 				}
 			}
@@ -109,6 +119,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 			// find basic block ends
 			foreach(var basicBlock in basicBlocks) {
 				for(int i = basicBlock.FirstInstructionIndex; i <= function.LastInstructionIndex; i++) {
+					instructions[i].Block = basicBlock;
 					if(i == function.LastInstructionIndex || startIndices.Contains(i + 1)) {
 						basicBlock.LastInstructionIndex = i;
 						break;
@@ -121,6 +132,21 @@ namespace Majiro.Script.Analysis.ControlFlow {
 
 			basicBlocks.Sort((a, b) => a.FirstInstructionIndex - b.FirstInstructionIndex);
 			function.BasicBlocks = basicBlocks;
+
+			// link consecutive blocks
+			for(int i = 0; i < basicBlocks.Count - 1; i++) {
+				var block = basicBlocks[i];
+				if(block.IsUnreachable) continue;
+				if(block.IsExitBlock) continue;
+
+				var lastInstruction = instructions[block.LastInstructionIndex];
+				if(lastInstruction.IsUnconditionalJump) continue;
+				if(lastInstruction.IsSwitch) continue;
+
+				var nextBlock = basicBlocks[i + 1];
+				block.Successors.Add(nextBlock);
+				nextBlock.Predecessors.Add(block);
+			}
 
 			foreach(var basicBlock in basicBlocks) {
 				AnalyzeBasicBlock(basicBlock);
