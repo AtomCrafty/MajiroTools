@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Majiro.Script.Analysis.ControlFlow;
+using Majiro.Script.Analysis.StackTransition;
 
 namespace Majiro.Script {
 	public static class Disassembler {
@@ -123,7 +125,7 @@ namespace Majiro.Script {
 						count = reader.ReadUInt16();
 						instruction.SwitchCases = Enumerable
 							.Range(0, count)
-							.Select(_ => reader.ReadInt16())
+							.Select(_ => reader.ReadInt32())
 							.ToArray();
 						break;
 
@@ -227,9 +229,9 @@ namespace Majiro.Script {
 							}
 						}
 						else {
-							foreach(short offset in instruction.SwitchCases) {
+							foreach(int offset in instruction.SwitchCases) {
 								if(!first) sb.Append(", ");
-								sb.Append($"@~{offset:x4}");
+								sb.Append($"@~{offset:x8}");
 								first = false;
 							}
 						}
@@ -240,10 +242,26 @@ namespace Majiro.Script {
 			return sb.ToString();
 		}
 
+		public static void PrintFunctionHeader(Function function) {
+			Console.ForegroundColor = ConsoleColor.Blue;
+			Console.WriteLine($"func ${function.NameHash:x8}({string.Join(", ", function.ParameterTypes)})");
+			Console.ResetColor();
+		}
+
+		public static void PrintLabel(BasicBlock block) {
+			Console.ForegroundColor = ConsoleColor.Magenta;
+			Console.WriteLine($"{block.Name}:");
+			Console.ResetColor();
+		}
+
 		public static void PrintInstruction(Instruction instruction) {
 			Console.ForegroundColor = ConsoleColor.DarkGray;
 			Console.Write($"{instruction.Offset:x4}: ");
-			Console.ForegroundColor = instruction.Opcode.Mnemonic != "line" ? ConsoleColor.White : ConsoleColor.DarkGray;
+			Console.ForegroundColor = instruction.Opcode.Mnemonic == "line"
+				? ConsoleColor.DarkGray
+				: instruction.Opcode.Mnemonic == "phi"
+					? ConsoleColor.DarkYellow
+					: ConsoleColor.White;
 			Console.Write($"{instruction.Opcode.Mnemonic,-13}");
 			Console.ResetColor();
 
@@ -367,11 +385,29 @@ namespace Majiro.Script {
 							}
 						}
 						else {
-							foreach(short offset in instruction.SwitchCases) {
+							foreach(int offset in instruction.SwitchCases) {
 								if(!first) Console.Write(", ");
-								Console.Write($"@~{offset:x4}");
+								Console.Write($"@~{offset:x8}");
 								first = false;
 							}
+						}
+						break;
+
+					case 'p':
+						// phi node
+						first = true;
+						if(instruction is PhiInstruction phi) {
+							foreach(var predecessor in phi.Block.Predecessors) {
+								if(!first) Console.Write(", ");
+								Console.ForegroundColor = ConsoleColor.Magenta;
+								Console.Write('@');
+								Console.Write(predecessor.Name);
+								Console.ResetColor();
+								first = false;
+							}
+						}
+						else {
+							throw new Exception("Only phi instructions are allowed to have the 'p' encoding specifier");
 						}
 						break;
 				}

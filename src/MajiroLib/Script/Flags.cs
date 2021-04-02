@@ -21,7 +21,8 @@ namespace Majiro.Script {
 		String = 2,
 		IntArray = 3,
 		FloatArray = 4,
-		StringArray = 5
+		StringArray = 5,
+		Unknown = 255
 	}
 
 	[Flags]
@@ -68,5 +69,16 @@ namespace Majiro.Script {
 		public static MjoScope Scope(this MjoFlags flags) => (MjoScope)(((ushort)flags & (ushort)MjoFlagMask.Scope) >> 5);
 		public static MjoInvertMode InvertMode(this MjoFlags flags) => (MjoInvertMode)(((ushort)flags & (ushort)MjoFlagMask.Invert) >> 3);
 		public static MjoModifier Modifier(this MjoFlags flags) => (MjoModifier)((ushort)flags & (ushort)MjoFlagMask.Modifier);
+
+		public static MjoTypeMask ToMask(this MjoType type) => type == MjoType.Unknown ? MjoTypeMask.All : (MjoTypeMask)(1 << (byte)type);
+		public static bool Matches(this MjoType type, MjoTypeMask mask) => type == MjoType.Unknown || (type.ToMask() & mask) != 0;
+
+		public static MjoType Array(this MjoType type) => type.Matches(MjoTypeMask.Primitive)
+			? type + 3
+			: throw new Exception($"Can't create array type from {type}");
+
+		public static MjoType ElementType(this MjoType type) => type.Matches(MjoTypeMask.Array)
+			? type - 3
+			: throw new Exception($"Can't resolve element type of {type}");
 	}
 }

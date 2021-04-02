@@ -3,8 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Majiro.Script;
-using Majiro.Script.Analysis;
 using Majiro.Script.Analysis.ControlFlow;
+using Majiro.Script.Analysis.StackTransition;
 
 namespace MajiroTools {
 	static class Program {
@@ -21,7 +21,15 @@ namespace MajiroTools {
 
 		static void Main(string[] args) {
 			var names = new[] {
-				"X_CONTROL", "CONSOLE_WROTE", "CONSOLE_CLS", "CONSOLE_ON", "CONSOLE_OFF", "CONSOLE_OFF", "PAUSE", "CRLF", "NAME_DISP", "CONSOLE_CLS", "CONSOLE_OFF", "CONSOLE_ON", "HOT_RESET",
+				"X_CONTROL",
+				"CONSOLE_WROTE",
+				"CONSOLE_CLS",
+				"CONSOLE_ON",
+				"CONSOLE_OFF",
+				"PAUSE",
+				"CRLF",
+				"NAME_DISP",
+				"HOT_RESET",
 				"$init@GLOBAL",
 				"get_variable",
 				"$get_variable",
@@ -35,11 +43,17 @@ namespace MajiroTools {
 				"event_hook@MAJIRO",
 				"$event_hook",
 				"$event_hook@MAJIRO",
-			};
+				"POPUP_SAVE",
+				"POPUP_LOAD",
+				"POPUP_SPEED",
+				"POPUP_SPEEDCONFIG",
+				"POPUP_SPEED_CONFIG",
+				"__SYS__NumParams",
+				};
 
-			foreach(string name in names) {
-				PrintHash(name);
-			}
+			//foreach(string name in names) {
+			//	PrintHash(name);
+			//}
 
 			/*
 			foreach(var opcode in Opcode.List) {
@@ -51,27 +65,23 @@ namespace MajiroTools {
 			//*
 			using var reader = new BinaryReader(File.OpenRead(@"start.mjo"));
 			var script = Disassembler.DisassembleScript(reader);
-			//foreach(var instruction in script.Instructions) {
-			//	Disassembler.PrintInstruction(instruction);
-			//}
 
 			var cfg = ControlFlowGraph.BuildFromScript(script);
+			StackTransitionGraph.Analyze(cfg);
+
 			foreach(var function in cfg.Functions) {
-				Console.ForegroundColor = ConsoleColor.Blue;
-				Console.WriteLine($"func ${function.NameHash:x8}({string.Join(", ", function.ParameterTypes)})");
-				Console.ResetColor();
-				foreach(var basicBlock in function.BasicBlocks) {
-					Console.ForegroundColor = ConsoleColor.Magenta;
-					Console.WriteLine($"{basicBlock.Name}:");
-					Console.ResetColor();
-					foreach(var instruction in basicBlock.Instructions) {
+				Disassembler.PrintFunctionHeader(function);
+				foreach(var block in function.BasicBlocks) {
+					Disassembler.PrintLabel(block);
+					foreach(var instruction in block.PhiNodes.Concat(block.Instructions)) {
+						StackTransitionGraph.WriteStackState(instruction.StackState);
+						Console.CursorLeft = 40;
 						Disassembler.PrintInstruction(instruction);
 					}
 					Console.WriteLine();
 				}
 				Console.WriteLine();
 			}
-
 			//*/
 		}
 	}

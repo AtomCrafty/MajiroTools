@@ -1,8 +1,8 @@
-﻿using Majiro.Script.Analysis;
-using Majiro.Script.Analysis.ControlFlow;
+﻿using Majiro.Script.Analysis.ControlFlow;
+using Majiro.Script.Analysis.StackTransition;
 
 namespace Majiro.Script {
-	public sealed class Instruction {
+	public class Instruction {
 		public readonly Opcode Opcode;
 		public uint Offset;
 		public uint Size;
@@ -17,19 +17,22 @@ namespace Majiro.Script {
 		public float FloatValue;
 		public ushort ArgumentCount;
 		public ushort LineNumber;
-		public short[] SwitchCases;
+		public int[] SwitchCases;
 
+		public BasicBlock Block;
 		public BasicBlock JumpTarget;
 		public BasicBlock[] SwitchTargets;
+		public StackState StackState;
 
 		public bool IsJump => Opcode.IsJump;
-		public bool IsSwitch => Opcode.Mnemonic == "switch";
-		public bool IsReturn => Opcode.Mnemonic == "return";
-		public bool IsArgCheck => Opcode.Mnemonic == "argcheck";
-		public bool IsSysCall => Opcode.Mnemonic == "syscall" || Opcode.Mnemonic == "syscallp";
-		public bool IsCall => Opcode.Mnemonic == "call" || Opcode.Mnemonic == "callp";
-		public bool IsLoad => Opcode.Mnemonic.StartsWith("ld");
-		public bool IsStore => Opcode.Mnemonic.StartsWith("st");
+		public bool IsUnconditionalJump => Opcode.Value == 0x82C;
+		public bool IsSwitch => Opcode.Value == 0x850;
+		public bool IsReturn => Opcode.Value == 0x82b;
+		public bool IsArgCheck => Opcode.Value == 0x836;
+		public bool IsAlloca => Opcode.Value == 0x829;
+		public bool IsSysCall => Opcode.Value.IsOneOf((ushort)0x834, (ushort)0x835);
+		public bool IsCall => Opcode.Value.IsOneOf((ushort)0x80f, (ushort)0x810);
+		public bool IsPhi => Opcode.Mnemonic == "phi";
 
 		public Instruction(Opcode opcode, uint offset) {
 			Opcode = opcode;
