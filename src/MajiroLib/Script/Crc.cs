@@ -12,18 +12,18 @@ namespace Majiro.Script {
 		private static readonly byte[] CryptKey64 = Crc64Table.SelectMany(BitConverter.GetBytes).ToArray();
 
 		public static uint Calculate32(int seed) {
-			const uint mask = 0xEDB88320;
+			const uint poly = 0xEDB88320;
 			uint value = (uint)seed;
 			for(int i = 0; i < 8; i++) {
-				value = (value & 1) != 0 ? (value >> 1) ^ mask : value >> 1;
+				value = (value & 1) != 0 ? (value >> 1) ^ poly : value >> 1;
 			}
 			return value;
 		}
 		public static long Calculate64(int seed) {
-			const ulong mask = 0x85E1C3D753D46D27;
+			const ulong poly = 0x85E1C3D753D46D27;
 			ulong value = (ulong)seed;
 			for(int i = 0; i < 8; i++) {
-				value = (value & 1) != 0 ? (value ^ mask) >> 1 : value >> 1;
+				value = (value & 1) != 0 ? (value ^ poly) >> 1 : value >> 1;
 			}
 			return (long)value;
 		}
@@ -53,7 +53,7 @@ namespace Majiro.Script {
 		public static long Hash64(string s) => Hash64(Helpers.ShiftJis.GetBytes(s));
 
 		public static long Hash64(byte[] bytes) {
-			long result = 0xFFFFFFFF;
+			long result = -1;
 			foreach(byte b in bytes) {
 				result = (result >> 8) ^ Crc64Table[(byte)(result ^ b)];
 			}
