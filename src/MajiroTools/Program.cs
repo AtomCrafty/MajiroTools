@@ -26,10 +26,10 @@ namespace MajiroTools {
 				"X_CONTROL",
 				"user_voice",
 				"user_voice@GLOBAL",
-				};
+			};
 
 			foreach(string name in names) {
-				PrintHash(name);
+				//PrintHash(name);
 			}
 
 			/*
@@ -48,7 +48,7 @@ namespace MajiroTools {
 			StackTransitionPass.Analyze(script);
 
 			//Disassembler.PrintScript(script, IColoredWriter.Console);
-			using(var fw = new StreamWriter("pre.mjil"))
+			using(var fw = new StreamWriter("script1.mjil"))
 				Disassembler.PrintScript(script, new StreamColorWriter(fw));
 
 			using var ms = new MemoryStream();
@@ -63,9 +63,23 @@ namespace MajiroTools {
 			ControlFlowPass.Analyze(script2);
 			StackTransitionPass.Analyze(script2);
 			
-			using(var fw = new StreamWriter("post.mjil"))
+			using(var fw = new StreamWriter("script2.mjil"))
 				Disassembler.PrintScript(script2, new StreamColorWriter(fw));
-			Disassembler.PrintScript(script2, IColoredWriter.Console);
+
+			using(var fw = File.Open("exported.mjo", FileMode.Create)) {
+				Assembler.AssembleScript(script2, new BinaryWriter(fw), true, false);
+				fw.Flush(true);
+				fw.Close();
+			}
+
+			using var reader2 = new BinaryReader(File.OpenRead("exported.mjo"));
+			var script3 = Disassembler.DisassembleScript(reader2);
+
+			ControlFlowPass.Analyze(script3);
+			
+			using(var fw = new StreamWriter("script3.mjil"))
+				Disassembler.PrintScript(script3, new StreamColorWriter(fw));
+			Disassembler.PrintScript(script3, IColoredWriter.Console);
 
 			return;
 

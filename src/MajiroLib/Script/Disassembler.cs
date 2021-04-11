@@ -17,7 +17,7 @@ namespace Majiro.Script {
 			bool isEncrypted = signature == "MajiroObjX1.000\0";
 			Debug.Assert(isEncrypted ^ (signature == "MajiroObjV1.000\0"));
 
-			uint entryPointIndex = reader.ReadUInt32();
+			uint entryPointOffset = reader.ReadUInt32();
 			uint readMarkSize = reader.ReadUInt32();
 			int functionCount = reader.ReadInt32();
 			var functionIndex = new List<FunctionEntry>(functionCount);
@@ -35,7 +35,9 @@ namespace Majiro.Script {
 
 			var instructions = DisassembleByteCode(ms);
 
-			return new MjoScript(entryPointIndex, functionIndex, instructions);
+			return new MjoScript(entryPointOffset, functionIndex, instructions) {
+				EnableReadMark = readMarkSize != 0
+			};
 		}
 
 		public static List<Instruction> DisassembleByteCode(Stream s) {
@@ -144,8 +146,27 @@ namespace Majiro.Script {
 
 		public static void PrintFunctionHeader(Function function, IColoredWriter writer) {
 			writer.ForegroundColor = ConsoleColor.Blue;
-			writer.WriteLine($"func ${function.NameHash:x8}({string.Join(", ", function.ParameterTypes).ToLower()})");
+			writer.Write("func ");
+			writer.Write($"${function.NameHash:x8}");
 			writer.ResetColor();
+			writer.Write("(");
+			bool first = true;
+			foreach(var type in function.ParameterTypes) {
+				if(!first) {
+					writer.Write(", ");
+				}
+				first = false;
+				writer.ForegroundColor = ConsoleColor.Cyan;
+				writer.Write(type.ToString().ToLower());
+				writer.ResetColor();
+			}
+			writer.Write(") ");
+			if(function.IsEntryPoint) {
+				writer.ForegroundColor = ConsoleColor.DarkYellow;
+				writer.Write("entrypoint ");
+				writer.ResetColor();
+			}
+			writer.WriteLine("{");
 		}
 
 		public static void PrintLabel(BasicBlock block, IColoredWriter writer) {
@@ -178,7 +199,7 @@ namespace Majiro.Script {
 						foreach(var type in instruction.TypeList) {
 							if(!first) writer.Write(", ");
 							writer.ForegroundColor = ConsoleColor.Cyan;
-							writer.Write(type);
+							writer.Write(type.ToString().ToLower());
 							writer.ResetColor();
 							first = false;
 						}
@@ -334,7 +355,7 @@ namespace Majiro.Script {
 		}
 
 		public static void PrintFunction(Function function, IColoredWriter writer) {
-			writer.WriteLine($"func ${function.NameHash:x8}({string.Join(", ", function.ParameterTypes).ToLower()}) {{");
+			PrintFunctionHeader(function, writer);
 			bool first = true;
 			foreach(var block in function.BasicBlocks) {
 				if(!first)
@@ -346,6 +367,17 @@ namespace Majiro.Script {
 		}
 
 		public static void PrintScript(MjoScript script, IColoredWriter writer) {
+			writer.ForegroundColor = ConsoleColor.DarkYellow;
+			writer.Write("readmark ");
+			writer.ForegroundColor = script.EnableReadMark ? ConsoleColor.Green : ConsoleColor.Red;
+			writer.WriteLine(script.EnableReadMark ? "enable" : "disable");
+			//writer.ForegroundColor = ConsoleColor.DarkYellow;
+			//writer.Write("entrypoint ");
+			//writer.ForegroundColor = ConsoleColor.Blue;
+			//writer.WriteLine($"${script.EntryPointFunction.NameHash:x8}");
+			writer.ResetColor();
+			writer.WriteLine();
+
 			bool first = true;
 			foreach(var function in script.Functions) {
 				if(!first)

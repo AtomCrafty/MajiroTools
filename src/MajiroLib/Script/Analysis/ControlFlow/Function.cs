@@ -18,7 +18,8 @@ namespace Majiro.Script.Analysis.ControlFlow {
 
 		public MjoType[] ParameterTypes;
 		
-		public uint Offset => Script.Instructions[FirstInstructionIndex].Offset;
+		public uint StartOffset => Script.Instructions[FirstInstructionIndex].Offset;
+		public bool IsEntryPoint => StartOffset == Script.EntryPointOffset;
 
 		public IEnumerable<Instruction> Instructions => Enumerable
 			.Range(FirstInstructionIndex, InstructionCount)

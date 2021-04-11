@@ -12,7 +12,10 @@ using static Majiro.Script.Assembler.TokenType;
 namespace Majiro.Script {
 	public static class Assembler {
 
-		public enum TokenType {
+		internal enum TokenType {
+			ReadMark,
+			Enable,
+			Disable,
 			Unknown,
 			Address,
 			Label,
@@ -24,8 +27,8 @@ namespace Majiro.Script {
 			LineNo,
 			Resource,
 			Punctuation,
-			EntryPoint,
 			Func,
+			EntryPoint,
 			VarType,
 			Scope,
 			Modifier,
@@ -34,7 +37,7 @@ namespace Majiro.Script {
 			EndOfFile,
 		}
 
-		public struct Token {
+		internal struct Token {
 			public TokenType Type;
 			public string Value;
 
@@ -46,7 +49,7 @@ namespace Majiro.Script {
 			public override string ToString() => $"{Type}: '{Value}'";
 		}
 
-		public static IEnumerable<Token> Tokenize(TextReader reader) {
+		internal static IEnumerable<Token> Tokenize(TextReader reader) {
 			var sb = new StringBuilder();
 
 			TokenType GetType(string text) {
@@ -78,6 +81,12 @@ namespace Majiro.Script {
 					return Modifier;
 				if(text.StartsWith("invert_"))
 					return InvertMode;
+				if(text.ToLower() == "readmark")
+					return ReadMark;
+				if(text.ToLower().IsOneOf("enable", "enabled"))
+					return Enable;
+				if(text.ToLower().IsOneOf("disable", "disabled"))
+					return Disable;
 				return Name;
 			}
 
@@ -153,7 +162,7 @@ namespace Majiro.Script {
 		}
 
 		public static MjoScript Parse(TextReader reader) {
-			var tokens = Tokenize(reader).ToList();
+			var tokens = Tokenize(reader);
 			using var enumerator = tokens.GetEnumerator();
 
 			Token ct;
@@ -352,7 +361,7 @@ namespace Majiro.Script {
 							break;
 
 						case 'r':
-							instruction.FloatValue = float.Parse(Consume(IntLiteral, FloatLiteral).Value);
+							instruction.FloatValue = float.Parse(Consume(IntLiteral, FloatLiteral).Value, CultureInfo.InvariantCulture);
 							currentOffset += 4;
 							break;
 
@@ -471,15 +480,20 @@ namespace Majiro.Script {
 			}
 
 			var script = new MjoScript(uint.MaxValue, new List<FunctionEntry>(), instructions) {
-				Functions = new List<Function>()
+				Functions = new List<Function>(),
+				EnableReadMark = true
 			};
+
+			if(TryConsume(out _, ReadMark)) {
+				script.EnableReadMark = Consume(Enable, Disable).Type == Enable;
+			}
 
 			while(ct.Type != EndOfFile) {
 				var function = ParseFunction(script);
 				script.Functions.Add(function);
 				script.Index.Add(new FunctionEntry {
 					NameHash = function.NameHash,
-					Offset = function.Offset
+					Offset = function.StartOffset
 				});
 			}
 
@@ -497,7 +511,125 @@ namespace Majiro.Script {
 				}
 			}
 
+			Debug.Assert(script.EntryPointOffset != uint.MaxValue);
+
 			return script;
+		}
+
+		public static void AssembleScript(MjoScript script, BinaryWriter writer, bool encrypt = true, bool readMark = true) {
+
+			using var ms = new MemoryStream();
+			using var bw = new BinaryWriter(ms, Helpers.ShiftJis, true);
+
+			AssembleByteCode(script, bw, out int readMarkCount);
+
+			uint byteCodeSize = (uint)ms.Position;
+			var byteCode = ms.GetBuffer();
+			if(encrypt)
+				Crc.Crypt32(byteCode);
+
+			writer.Write(Encoding.ASCII.GetBytes(encrypt
+				? "MajiroObjX1.000\0"
+				: "MajiroObjV1.000\0"));
+
+			writer.Write(script.EntryPointOffset);
+			writer.Write(readMark ? readMarkCount : 0);
+			writer.Write(script.Index.Count);
+			foreach(var entry in script.Index) {
+				writer.Write(entry.NameHash);
+				writer.Write(entry.Offset);
+			}
+
+			writer.Write(byteCodeSize);
+			writer.Write(byteCode, 0, (int)byteCodeSize);
+		}
+
+		private static void AssembleByteCode(MjoScript script, BinaryWriter writer, out int readMarkCount) {
+			readMarkCount = 0;
+			foreach(var instruction in script.Instructions) {
+				AssembleInstruction(instruction, writer, ref readMarkCount);
+			}
+		}
+
+		private static void AssembleInstruction(Instruction instruction, BinaryWriter writer, ref int readMarkCount) {
+			writer.Write(instruction.Opcode.Value);
+
+			foreach(char operand in instruction.Opcode.Encoding) {
+				switch(operand) {
+					case 't':
+						// type list
+						writer.Write((ushort)instruction.TypeList.Length);
+						foreach(var type in instruction.TypeList) {
+							writer.Write((byte)type);
+						}
+						break;
+
+					case 's':
+						// string data
+						var bytes = Helpers.ShiftJis.GetBytes(instruction.String);
+						writer.Write((ushort)(bytes.Length + 1));
+						writer.Write(bytes);
+						writer.Write((byte)0);
+						break;
+
+					case 'f':
+						// flags
+						writer.Write((ushort)instruction.Flags);
+						break;
+
+					case 'h':
+						// name hash
+						writer.Write(instruction.Hash);
+						break;
+
+					case 'o':
+						// variable offset
+						writer.Write(instruction.VarOffset);
+						break;
+
+					case '0':
+						// 4 byte address placeholder
+						writer.Write(0);
+						break;
+
+					case 'i':
+						// integer constant
+						writer.Write(instruction.IntValue);
+						break;
+
+					case 'r':
+						// float constant
+						writer.Write(instruction.FloatValue);
+						break;
+
+					case 'a':
+						// argument count
+						writer.Write(instruction.ArgumentCount);
+						break;
+
+					case 'j':
+						// jump offset
+						writer.Write(instruction.JumpOffset);
+						break;
+
+					case 'l':
+						// line number
+						readMarkCount = Math.Max(readMarkCount, instruction.LineNumber);
+						writer.Write(instruction.LineNumber);
+						break;
+
+					case 'c':
+						// switch case table
+						writer.Write((ushort)instruction.SwitchCases.Length);
+						foreach(int caseOffset in instruction.SwitchCases) {
+							writer.Write(caseOffset);
+						}
+						break;
+
+					default:
+						throw new Exception("Unrecognized encoding specifier: " + operand);
+				}
+			}
 		}
 	}
 }

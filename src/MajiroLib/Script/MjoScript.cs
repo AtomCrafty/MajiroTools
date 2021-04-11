@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Majiro.Script.Analysis.ControlFlow;
 
 namespace Majiro.Script {
@@ -6,8 +7,11 @@ namespace Majiro.Script {
 		public uint EntryPointOffset;
 		public readonly List<FunctionEntry> Index;
 		public readonly List<Instruction> Instructions;
+		public bool EnableReadMark;
 
 		public List<Function> Functions;
+
+		public Function EntryPointFunction => Functions?.Single(func => func.StartOffset == EntryPointOffset);
 
 		public MjoScript(uint entryPointOffset, List<FunctionEntry> index, List<Instruction> instructions) {
 			EntryPointOffset = entryPointOffset;
