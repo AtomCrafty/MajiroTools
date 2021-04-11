@@ -39,6 +39,6 @@ namespace Majiro.Script {
 			Offset = offset;
 		}
 
-		public override string ToString() => Disassembler.FormatInstruction(this);
+		public override string ToString() => Disassembler.DumpInstruction(this);
 	}
 }

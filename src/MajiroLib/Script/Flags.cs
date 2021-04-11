@@ -80,5 +80,8 @@ namespace Majiro.Script {
 		public static MjoType ElementType(this MjoType type) => type.Matches(MjoTypeMask.Array)
 			? type - 3
 			: throw new Exception($"Can't resolve element type of {type}");
+
+		public static MjoFlags Build(MjoType type, MjoScope scope, MjoModifier modifier, MjoInvertMode invertMode, int dimension) =>
+			(MjoFlags)(dimension << 11 | (ushort)type << 8 | (ushort)scope << 5 | (ushort)invertMode << 3 | (ushort)modifier);
 	}
 }

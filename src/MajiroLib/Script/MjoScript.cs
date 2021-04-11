@@ -3,14 +3,14 @@ using Majiro.Script.Analysis.ControlFlow;
 
 namespace Majiro.Script {
 	public class MjoScript {
-		public uint EntryPointIndex;
+		public uint EntryPointOffset;
 		public readonly List<FunctionEntry> Index;
 		public readonly List<Instruction> Instructions;
 
 		public List<Function> Functions;
 
-		public MjoScript(uint entryPointIndex, List<FunctionEntry> index, List<Instruction> instructions) {
-			EntryPointIndex = entryPointIndex;
+		public MjoScript(uint entryPointOffset, List<FunctionEntry> index, List<Instruction> instructions) {
+			EntryPointOffset = entryPointOffset;
 			Index = index;
 			Instructions = instructions;
 		}

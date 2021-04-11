@@ -29,6 +29,11 @@ namespace Majiro.Script {
 
 		public static readonly IReadOnlyCollection<Opcode> List = Init();
 		public static readonly IReadOnlyDictionary<ushort, Opcode> ByValue = new ReadOnlyDictionary<ushort, Opcode>(List.ToDictionary(op => op.Value));
+		public static readonly IReadOnlyDictionary<string, Opcode> ByMnemonic = new ReadOnlyDictionary<string, Opcode>(List
+			.SelectMany(op => op.Aliases
+				.Select(alias => (mnemonic: alias, opcode: op))
+				.Prepend((mnemonic: op.Mnemonic, opcode: op)))
+			.ToDictionary(pair => pair.mnemonic, pair => pair.opcode));
 
 		public override string ToString() => Mnemonic;
 

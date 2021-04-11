@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Majiro.Script.Analysis.ControlFlow;
+using Majiro.Util;
 
 namespace Majiro.Script.Analysis.StackTransition {
 	public static class StackTransitionPass {
@@ -61,23 +62,23 @@ namespace Majiro.Script.Analysis.StackTransition {
 		public static void Analyze(MjoScript script) => script.Functions.ForEach(Analyze);
 
 		public static void Analyze(Function function) {
-			Disassembler.PrintFunctionHeader(function);
+			//Disassembler.PrintFunctionHeader(function, IColoredWriter.Console);
 			var blocks = function.BasicBlocks.ToList();
 			blocks.PreOrderSort(block => block.Successors);
 
 			foreach(var block in blocks) {
-				Disassembler.PrintLabel(block);
-				Console.ForegroundColor = ConsoleColor.DarkGray;
+				//Disassembler.PrintLabel(block, IColoredWriter.Console);
+				//Console.ForegroundColor = ConsoleColor.DarkGray;
 				//Console.WriteLine("// predecessors: " + string.Join(", ", block.Predecessors.Select(p =>
 				//	$"{p.Name} (end stack size {p.EndState?.StackTop.ToString() ?? "unknown"})")));
 
 				var state = InitStartState(block);
 
 				foreach(var phi in block.PhiNodes) {
-					WriteStackState(phi.StackState);
-					Console.CursorLeft = 40;//74;
-					Console.ForegroundColor = ConsoleColor.Red;
-					Disassembler.PrintInstruction(phi);
+					//WriteStackState(phi.StackState);
+					//Console.CursorLeft = 40;//74;
+					//Console.ForegroundColor = ConsoleColor.Red;
+					//Disassembler.PrintInstruction(phi, IColoredWriter.Console);
 				}
 
 				//if(false)
@@ -89,9 +90,9 @@ namespace Majiro.Script.Analysis.StackTransition {
 
 					SimulateTransition(state, instruction);
 
-					WriteStackState(state);
-					Console.CursorLeft = 40;//74;
-					Disassembler.PrintInstruction(instruction);
+					//WriteStackState(state);
+					//Console.CursorLeft = 40;//74;
+					//Disassembler.PrintInstruction(instruction, IColoredWriter.Console);
 
 					// the argcheck instruction determines the stack base
 					if(instruction.IsArgCheck)
@@ -105,10 +106,10 @@ namespace Majiro.Script.Analysis.StackTransition {
 				CheckStateCompatibility(block.Successors.Select(pre => pre.StartState).Prepend(state));
 
 				block.EndState = state;
-				Console.ForegroundColor = ConsoleColor.DarkGray;
+				//Console.ForegroundColor = ConsoleColor.DarkGray;
 				//Console.WriteLine("// successors: " + string.Join(", ", block.Successors.Select(s =>
 				//	$"{s.Name} (start stack size {s.StartState?.StackTop.ToString() ?? "unknown"})")));
-				Console.WriteLine();
+				//Console.WriteLine();
 			}
 		}
 
@@ -118,8 +119,7 @@ namespace Majiro.Script.Analysis.StackTransition {
 			StackState startState;
 			switch(block.Predecessors.Count) {
 				case 0:
-					Debug.Assert(block.IsEntryBlock);
-					startState = new StackState();
+					startState = block.IsEntryBlock ? new StackState() : new StackState { StackBase = -1 };
 					break;
 
 				case 1:

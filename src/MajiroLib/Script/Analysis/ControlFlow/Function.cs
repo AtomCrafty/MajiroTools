@@ -9,7 +9,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 
 		public int FirstInstructionIndex = -1;
 		public int LastInstructionIndex = -1;
-		public int InstructionCount => FirstInstructionIndex != -1 && LastInstructionIndex != -1 
+		public int InstructionCount => FirstInstructionIndex != -1 && LastInstructionIndex != -1
 			? LastInstructionIndex - FirstInstructionIndex + 1 : -1;
 
 		public BasicBlock EntryBlock;
@@ -17,6 +17,8 @@ namespace Majiro.Script.Analysis.ControlFlow {
 		public List<BasicBlock> BasicBlocks;
 
 		public MjoType[] ParameterTypes;
+		
+		public uint Offset => Script.Instructions[FirstInstructionIndex].Offset;
 
 		public IEnumerable<Instruction> Instructions => Enumerable
 			.Range(FirstInstructionIndex, InstructionCount)

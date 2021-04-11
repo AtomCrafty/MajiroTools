@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
 using Majiro.Script.Analysis.ControlFlow;
 using Majiro.Script.Analysis.StackTransition;
+using Majiro.Util;
 
 namespace Majiro.Script {
 	public static class Disassembler {
@@ -16,7 +18,7 @@ namespace Majiro.Script {
 			Debug.Assert(isEncrypted ^ (signature == "MajiroObjV1.000\0"));
 
 			uint entryPointIndex = reader.ReadUInt32();
-			uint unknown_14 = reader.ReadUInt32();
+			uint readMarkSize = reader.ReadUInt32();
 			int functionCount = reader.ReadInt32();
 			var functionIndex = new List<FunctionEntry>(functionCount);
 			for(int i = 0; i < functionCount; i++) {
@@ -71,7 +73,8 @@ namespace Majiro.Script {
 					case 's':
 						// string data
 						ushort size = reader.ReadUInt16();
-						var bytes = reader.ReadBytes(size);
+						var bytes = reader.ReadBytes(size - 1);
+						Debug.Assert(reader.ReadByte() == 0);
 						instruction.String = Helpers.ShiftJis.GetString(bytes);
 						break;
 
@@ -139,159 +142,56 @@ namespace Majiro.Script {
 			return instruction;
 		}
 
-		public static string FormatInstruction(Instruction instruction) {
-			var sb = new StringBuilder();
-
-			sb.Append($"{instruction.Offset:x4}: {instruction.Opcode.Mnemonic,-13}");
-
-			foreach(char operand in instruction.Opcode.Encoding) {
-
-				if(operand == '0') continue;
-				sb.Append(' ');
-
-				switch(operand) {
-					case 't':
-						// type list
-						sb.Append('[');
-						sb.Append(']');
-						break;
-
-					case 's':
-						// string data
-						sb.Append('"');
-						sb.Append(instruction.String); // todo escape this properly
-						sb.Append('"');
-						break;
-
-					case 'f':
-						// flags
-						sb.Append(instruction.Flags); // todo proper keywords
-						break;
-
-					case 'h':
-						// name hash
-						sb.Append('$');
-						sb.Append(instruction.Hash.ToString("x8"));
-						break;
-
-					case 'o':
-						// variable offset
-						sb.Append(instruction.VarOffset);
-						break;
-
-					case '0':
-						// 4 byte address placeholder
-						break;
-
-					case 'i':
-						// integer constant
-						sb.Append(instruction.IntValue);
-						break;
-
-					case 'r':
-						// float constant
-						sb.Append(instruction.FloatValue);
-						break;
-
-					case 'a':
-						// argument count
-						sb.Append('(');
-						sb.Append(instruction.ArgumentCount);
-						sb.Append(')');
-						break;
-
-					case 'j':
-						// jump offset
-						if(instruction.JumpTarget != null) {
-							sb.Append('@');
-							sb.Append(instruction.JumpTarget.Name);
-						}
-						else {
-							sb.Append($"@~{instruction.JumpOffset:x4}");
-						}
-						break;
-
-					case 'l':
-						// line number
-						sb.Append('#');
-						sb.Append(instruction.LineNumber);
-						break;
-
-					case 'c':
-						// switch case table
-						bool first = true;
-						if(instruction.SwitchTargets != null) {
-							foreach(var targetBlock in instruction.SwitchTargets) {
-								if(!first) sb.Append(", ");
-								sb.Append('@');
-								sb.Append(targetBlock.Name);
-								first = false;
-							}
-						}
-						else {
-							foreach(int offset in instruction.SwitchCases) {
-								if(!first) sb.Append(", ");
-								sb.Append($"@~{offset:x8}");
-								first = false;
-							}
-						}
-						break;
-				}
-			}
-
-			return sb.ToString();
+		public static void PrintFunctionHeader(Function function, IColoredWriter writer) {
+			writer.ForegroundColor = ConsoleColor.Blue;
+			writer.WriteLine($"func ${function.NameHash:x8}({string.Join(", ", function.ParameterTypes).ToLower()})");
+			writer.ResetColor();
 		}
 
-		public static void PrintFunctionHeader(Function function) {
-			Console.ForegroundColor = ConsoleColor.Blue;
-			Console.WriteLine($"func ${function.NameHash:x8}({string.Join(", ", function.ParameterTypes)})");
-			Console.ResetColor();
+		public static void PrintLabel(BasicBlock block, IColoredWriter writer) {
+			writer.ForegroundColor = ConsoleColor.Magenta;
+			writer.WriteLine($"{block.Name}:");
+			writer.ResetColor();
 		}
 
-		public static void PrintLabel(BasicBlock block) {
-			Console.ForegroundColor = ConsoleColor.Magenta;
-			Console.WriteLine($"{block.Name}:");
-			Console.ResetColor();
-		}
-
-		public static void PrintInstruction(Instruction instruction) {
-			Console.ForegroundColor = ConsoleColor.DarkGray;
-			Console.Write($"{instruction.Offset:x4}: ");
-			Console.ForegroundColor = instruction.Opcode.Mnemonic == "line"
+		public static void PrintInstruction(Instruction instruction, IColoredWriter writer) {
+			writer.ForegroundColor = ConsoleColor.DarkGray;
+			writer.Write($"{instruction.Offset:x4}: ");
+			writer.ForegroundColor = instruction.Opcode.Mnemonic == "line"
 				? ConsoleColor.DarkGray
 				: instruction.Opcode.Mnemonic == "phi"
 					? ConsoleColor.DarkYellow
 					: ConsoleColor.White;
-			Console.Write($"{instruction.Opcode.Mnemonic,-13}");
-			Console.ResetColor();
+			writer.Write($"{instruction.Opcode.Mnemonic,-13}");
+			writer.ResetColor();
 
 			foreach(char operand in instruction.Opcode.Encoding) {
 
 				if(operand == '0') continue;
-				Console.Write(' ');
+				writer.Write(' ');
 
 				switch(operand) {
 					case 't':
 						// type list
-						Console.Write('[');
+						writer.Write('[');
 						bool first = true;
 						foreach(var type in instruction.TypeList) {
-							if(!first) Console.Write(", ");
-							Console.ForegroundColor = ConsoleColor.Cyan;
-							Console.Write(type);
-							Console.ResetColor();
+							if(!first) writer.Write(", ");
+							writer.ForegroundColor = ConsoleColor.Cyan;
+							writer.Write(type);
+							writer.ResetColor();
 							first = false;
 						}
-						Console.Write(']');
+						writer.Write(']');
 						break;
 
 					case 's':
 						// string data
-						Console.ForegroundColor = ConsoleColor.DarkGreen;
-						Console.Write('"');
-						Console.Write(instruction.String); // todo escape this properly
-						Console.Write('"');
-						Console.ResetColor();
+						writer.ForegroundColor = ConsoleColor.DarkGreen;
+						writer.Write('"');
+						writer.Write(instruction.String); // todo escape this properly
+						writer.Write('"');
+						writer.ResetColor();
 						break;
 
 					case 'f': {
@@ -304,31 +204,31 @@ namespace Majiro.Script {
 							if(invert != MjoInvertMode.None) keywords.Add("invert_" + invert.ToString().ToLower());
 							var modifier = flags.Modifier();
 							if(modifier != MjoModifier.None) keywords.Add("modify_" + modifier.ToString().ToLower());
-							var dimension = flags.Dimension();
+							int dimension = flags.Dimension();
 							if(dimension != 0) keywords.Add("dim" + dimension);
 
-							Console.ForegroundColor = ConsoleColor.Cyan;
-							Console.Write(string.Join(" ", keywords));
-							Console.ResetColor();
+							writer.ForegroundColor = ConsoleColor.Cyan;
+							writer.Write(string.Join(" ", keywords));
+							writer.ResetColor();
 							break;
 						}
 
 					case 'h':
 						// name hash
 						if(instruction.IsSysCall)
-							Console.ForegroundColor = ConsoleColor.Yellow;
+							writer.ForegroundColor = ConsoleColor.Yellow;
 						else if(instruction.IsCall)
-							Console.ForegroundColor = ConsoleColor.Blue;
+							writer.ForegroundColor = ConsoleColor.Blue;
 						else
-							Console.ForegroundColor = ConsoleColor.Red;
-						Console.Write('$');
-						Console.Write(instruction.Hash.ToString("x8"));
-						Console.ResetColor();
+							writer.ForegroundColor = ConsoleColor.Red;
+						writer.Write('$');
+						writer.Write(instruction.Hash.ToString("x8"));
+						writer.ResetColor();
 						break;
 
 					case 'o':
 						// variable offset
-						Console.Write(instruction.VarOffset);
+						writer.Write(instruction.VarOffset);
 						break;
 
 					case '0':
@@ -337,40 +237,40 @@ namespace Majiro.Script {
 
 					case 'i':
 						// integer constant
-						Console.Write(instruction.IntValue);
+						writer.Write(instruction.IntValue);
 						break;
 
 					case 'r':
 						// float constant
-						Console.Write(instruction.FloatValue);
+						writer.Write(instruction.FloatValue.ToString(CultureInfo.InvariantCulture));
 						break;
 
 					case 'a':
 						// argument count
-						Console.Write('(');
-						Console.Write(instruction.ArgumentCount);
-						Console.Write(')');
+						writer.Write('(');
+						writer.Write(instruction.ArgumentCount);
+						writer.Write(')');
 						break;
 
 					case 'j':
 						// jump offset
-						Console.ForegroundColor = ConsoleColor.Magenta;
+						writer.ForegroundColor = ConsoleColor.Magenta;
 						if(instruction.JumpTarget != null) {
-							Console.Write('@');
-							Console.Write(instruction.JumpTarget.Name);
+							writer.Write('@');
+							writer.Write(instruction.JumpTarget.Name);
 						}
 						else {
-							Console.Write($"@~{instruction.JumpOffset:x4}");
+							writer.Write($"@~{instruction.JumpOffset:x8}");
 						}
-						Console.ResetColor();
+						writer.ResetColor();
 						break;
 
 					case 'l':
 						// line number
-						Console.ForegroundColor = ConsoleColor.DarkGray;
-						Console.Write('#');
-						Console.Write(instruction.LineNumber);
-						Console.ResetColor();
+						writer.ForegroundColor = ConsoleColor.DarkGray;
+						writer.Write('#');
+						writer.Write(instruction.LineNumber);
+						writer.ResetColor();
 						break;
 
 					case 'c':
@@ -378,16 +278,16 @@ namespace Majiro.Script {
 						first = true;
 						if(instruction.SwitchTargets != null) {
 							foreach(var targetBlock in instruction.SwitchTargets) {
-								if(!first) Console.Write(", ");
-								Console.Write('@');
-								Console.Write(targetBlock.Name);
+								if(!first) writer.Write(", ");
+								writer.Write('@');
+								writer.Write(targetBlock.Name);
 								first = false;
 							}
 						}
 						else {
 							foreach(int offset in instruction.SwitchCases) {
-								if(!first) Console.Write(", ");
-								Console.Write($"@~{offset:x8}");
+								if(!first) writer.Write(", ");
+								writer.Write($"@~{offset:x8}");
 								first = false;
 							}
 						}
@@ -398,11 +298,11 @@ namespace Majiro.Script {
 						first = true;
 						if(instruction is PhiInstruction phi) {
 							foreach(var predecessor in phi.Block.Predecessors) {
-								if(!first) Console.Write(", ");
-								Console.ForegroundColor = ConsoleColor.Magenta;
-								Console.Write('@');
-								Console.Write(predecessor.Name);
-								Console.ResetColor();
+								if(!first) writer.Write(", ");
+								writer.ForegroundColor = ConsoleColor.Magenta;
+								writer.Write('@');
+								writer.Write(predecessor.Name);
+								writer.ResetColor();
 								first = false;
 							}
 						}
@@ -413,7 +313,52 @@ namespace Majiro.Script {
 				}
 			}
 
-			Console.WriteLine();
+			writer.WriteLine();
+		}
+
+
+		private const string Indent = " ";
+
+		public static void PrintBasicBlock(BasicBlock block, IColoredWriter writer) {
+			writer.Write(Indent);
+			writer.ForegroundColor = ConsoleColor.Magenta;
+			writer.Write(block.Name);
+			writer.WriteLine(':');
+			writer.ResetColor();
+
+			foreach(var instruction in block.Instructions) {
+				writer.Write(Indent);
+				writer.Write(Indent);
+				PrintInstruction(instruction, writer);
+			}
+		}
+
+		public static void PrintFunction(Function function, IColoredWriter writer) {
+			writer.WriteLine($"func ${function.NameHash:x8}({string.Join(", ", function.ParameterTypes).ToLower()}) {{");
+			bool first = true;
+			foreach(var block in function.BasicBlocks) {
+				if(!first)
+					writer.WriteLine();
+				first = false;
+				PrintBasicBlock(block, writer);
+			}
+			writer.WriteLine('}');
+		}
+
+		public static void PrintScript(MjoScript script, IColoredWriter writer) {
+			bool first = true;
+			foreach(var function in script.Functions) {
+				if(!first)
+					writer.WriteLine();
+				first = false;
+				PrintFunction(function, writer);
+			}
+		}
+
+		public static string DumpInstruction(Instruction instruction) {
+			var sb = new StringBuilder();
+			PrintInstruction(instruction, new StringBuilderColorWriter(sb));
+			return sb.ToString();
 		}
 	}
 }

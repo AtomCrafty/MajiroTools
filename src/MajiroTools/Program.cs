@@ -2,9 +2,11 @@
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Xml.Serialization;
 using Majiro.Script;
 using Majiro.Script.Analysis.ControlFlow;
 using Majiro.Script.Analysis.StackTransition;
+using Majiro.Util;
 
 namespace MajiroTools {
 	static class Program {
@@ -22,38 +24,13 @@ namespace MajiroTools {
 		static void Main(string[] args) {
 			var names = new[] {
 				"X_CONTROL",
-				"CONSOLE_WROTE",
-				"CONSOLE_CLS",
-				"CONSOLE_ON",
-				"CONSOLE_OFF",
-				"PAUSE",
-				"CRLF",
-				"NAME_DISP",
-				"HOT_RESET",
-				"$init@GLOBAL",
-				"get_variable",
-				"$get_variable",
-				"get_variable@",
-				"$get_variable@",
-				"get_variable$",
-				"$get_variable$",
-				"get_variable@GLOBAL",
-				"$get_variable@GLOBAL",
-				"event_hook",
-				"event_hook@MAJIRO",
-				"$event_hook",
-				"$event_hook@MAJIRO",
-				"POPUP_SAVE",
-				"POPUP_LOAD",
-				"POPUP_SPEED",
-				"POPUP_SPEEDCONFIG",
-				"POPUP_SPEED_CONFIG",
-				"__SYS__NumParams",
+				"user_voice",
+				"user_voice@GLOBAL",
 				};
 
-			//foreach(string name in names) {
-			//	PrintHash(name);
-			//}
+			foreach(string name in names) {
+				PrintHash(name);
+			}
 
 			/*
 			foreach(var opcode in Opcode.List) {
@@ -63,20 +40,43 @@ namespace MajiroTools {
 			//*/
 
 			//*
-			using var reader = new BinaryReader(File.OpenRead(@"start.mjo"));
+			const string inPath = "start.mjo";//@"D:\Games\Private\[Jast] Closed Game [v16700]\scenario\0010101.mjo";
+			using var reader = new BinaryReader(File.OpenRead(inPath));
 			var script = Disassembler.DisassembleScript(reader);
 
 			ControlFlowPass.Analyze(script);
 			StackTransitionPass.Analyze(script);
 
+			//Disassembler.PrintScript(script, IColoredWriter.Console);
+			using(var fw = new StreamWriter("pre.mjil"))
+				Disassembler.PrintScript(script, new StreamColorWriter(fw));
+
+			using var ms = new MemoryStream();
+			using(var sw = new StreamWriter(ms, null, -1, true)) {
+				Disassembler.PrintScript(script, new StreamColorWriter(sw));
+			}
+
+			ms.Position = 0;
+			using var sr = new StreamReader(ms);
+			var script2 = Assembler.Parse(sr);
+			
+			ControlFlowPass.Analyze(script2);
+			StackTransitionPass.Analyze(script2);
+			
+			using(var fw = new StreamWriter("post.mjil"))
+				Disassembler.PrintScript(script2, new StreamColorWriter(fw));
+			Disassembler.PrintScript(script2, IColoredWriter.Console);
+
+			return;
+
 			foreach(var function in script.Functions) {
-				Disassembler.PrintFunctionHeader(function);
+				Disassembler.PrintFunctionHeader(function, IColoredWriter.Console);
 				foreach(var block in function.BasicBlocks) {
-					Disassembler.PrintLabel(block);
+					Disassembler.PrintLabel(block, IColoredWriter.Console);
 					foreach(var instruction in block.PhiNodes.Concat(block.Instructions)) {
 						StackTransitionPass.WriteStackState(instruction.StackState);
 						Console.CursorLeft = 40;
-						Disassembler.PrintInstruction(instruction);
+						Disassembler.PrintInstruction(instruction, IColoredWriter.Console);
 					}
 					Console.WriteLine();
 				}

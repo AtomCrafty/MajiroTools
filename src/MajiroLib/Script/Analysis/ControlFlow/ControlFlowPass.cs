@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Majiro.Script.Analysis.ControlFlow {
 	public static class ControlFlowPass {
@@ -94,7 +95,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 			}
 
 			// mark basic block boundaries
-			for(int i = function.FirstInstructionIndex; i < function.LastInstructionIndex; i++) {
+			for(int i = function.FirstInstructionIndex; i <= function.LastInstructionIndex; i++) {
 				var instruction = instructions[i];
 
 				if(instruction.IsJump || instruction.IsSwitch) {
@@ -102,7 +103,8 @@ namespace Majiro.Script.Analysis.ControlFlow {
 						MarkBasicBlockStart(offset);
 					}
 					// instruction after a jump is always a new basic block
-					startIndices.Add(i + 1);
+					if(i != function.LastInstructionIndex)
+						MarkBasicBlockStart(instruction.Offset + instruction.Size);
 				}
 				else if(instruction.IsArgCheck) {
 					Debug.Assert(function.ParameterTypes == null);
@@ -144,6 +146,16 @@ namespace Majiro.Script.Analysis.ControlFlow {
 
 			foreach(var basicBlock in basicBlocks) {
 				AnalyzeBasicBlock(basicBlock);
+			}
+
+			var unreachableBlocks = new Queue<BasicBlock>(basicBlocks.Where(block => block.IsUnreachable));
+			while(unreachableBlocks.TryDequeue(out var block)) {
+				foreach(var successor in block.Successors) {
+					successor.Predecessors.Remove(block);
+					if(successor.IsUnreachable)
+						unreachableBlocks.Enqueue(successor);
+				}
+				block.Successors.Clear();
 			}
 		}
 

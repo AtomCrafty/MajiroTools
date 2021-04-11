@@ -16,7 +16,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 
 		public List<BasicBlock> Predecessors = new List<BasicBlock>();
 		public List<BasicBlock> Successors = new List<BasicBlock>();
-		public bool IsUnreachable => !Predecessors.Any();
+		public bool IsUnreachable => !IsEntryBlock && !Predecessors.Any();
 
 		public bool IsDestructorEntryBlock =>
 			Predecessors.Count == 1 && Predecessors[0].LastInstruction.Opcode.Value == 0x847;
