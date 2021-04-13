@@ -1,5 +1,6 @@
 ﻿using Majiro.Script.Analysis.ControlFlow;
 using Majiro.Script.Analysis.StackTransition;
+using VToolBase.Core;
 
 namespace Majiro.Script {
 	public class Instruction {

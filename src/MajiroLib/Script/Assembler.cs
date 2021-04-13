@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using Majiro.Script.Analysis.ControlFlow;
 using Majiro.Script.Analysis.StackTransition;
+using VToolBase.Core;
 using static Majiro.Script.Assembler.TokenType;
 
 namespace Majiro.Script {

@@ -1,0 +1,3 @@
+[submodule "src/VToolBase"]
+	path = src/VToolBase
+	url = git@github.com:AtomCrafty/VToolBase.git

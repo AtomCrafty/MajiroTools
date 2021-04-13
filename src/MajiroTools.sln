@@ -12,7 +12,19 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MajiroDebugListener", "Maji
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MajiroLib", "MajiroLib\MajiroLib.csproj", "{AA8B1D03-AEAD-4922-938B-EF32F3455229}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Core", "VToolBase\Core\Core.shproj", "{D9925CA7-C6BB-47EC-BB6F-B7BA80C65C39}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Cli", "VToolBase\Cli\Cli.shproj", "{34844EA0-5B59-49B6-B6F3-0FA0CC60BAD0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "VToolBase", "VToolBase", "{CA70696C-5AAD-452D-B2CC-35E6E8FCEAE0}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		VToolBase\Cli\Cli.projitems*{34844ea0-5b59-49b6-b6f3-0fa0cc60bad0}*SharedItemsImports = 13
+		VToolBase\Cli\Cli.projitems*{98987418-d142-4d0a-86d0-59dfadb8272f}*SharedItemsImports = 5
+		VToolBase\Core\Core.projitems*{aa8b1d03-aead-4922-938b-ef32f3455229}*SharedItemsImports = 5
+		VToolBase\Core\Core.projitems*{d9925ca7-c6bb-47ec-bb6f-b7ba80c65c39}*SharedItemsImports = 13
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
@@ -33,6 +45,10 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D9925CA7-C6BB-47EC-BB6F-B7BA80C65C39} = {CA70696C-5AAD-452D-B2CC-35E6E8FCEAE0}
+		{34844EA0-5B59-49B6-B6F3-0FA0CC60BAD0} = {CA70696C-5AAD-452D-B2CC-35E6E8FCEAE0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {07A062CF-1A99-4931-8DE6-385E6CD7AD79}

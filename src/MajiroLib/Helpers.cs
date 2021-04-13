@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -17,8 +16,6 @@ namespace Majiro {
 
 		public static string ReadSizedString(this BinaryReader reader, int size, Encoding encoding = null) =>
 			(encoding ?? ShiftJis).GetString(reader.ReadBytes(size));
-
-		public static bool IsOneOf<T>(this T value, params T[] options) => options.Contains(value);
 
 		private enum TopologicalSortState {
 			Alive,

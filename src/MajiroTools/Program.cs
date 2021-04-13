@@ -1,27 +1,28 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Xml.Serialization;
 using Majiro.Script;
 using Majiro.Script.Analysis.ControlFlow;
 using Majiro.Script.Analysis.StackTransition;
 using Majiro.Util;
+using VToolBase.Cli;
+using VToolBase.Cli.Commands;
+using VToolBase.Cli.Util;
 
 namespace MajiroTools {
-	static class Program {
-		private static readonly Encoding ShiftJis;
 
-		static Program() {
-			Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-			ShiftJis = Encoding.GetEncoding("Shift-JIS");
+	public class Program {
+		public static void Main(string[] args) {
+			if(!CommandManager.TryRun(args)) {
+				new HelpCommand(CommandParameters.Empty).Execute();
+			}
+			Output.Flush();
 		}
 
 		static void PrintHash(string name) {
 			Console.WriteLine($"{Crc.Hash32(name):x8} {name}");
 		}
 
-		static void Main(string[] args) {
+		static void Main2(string[] args) {
 			var names = new[] {
 				"X_CONTROL",
 				"user_voice",
@@ -59,10 +60,10 @@ namespace MajiroTools {
 			ms.Position = 0;
 			using var sr = new StreamReader(ms);
 			var script2 = Assembler.Parse(sr);
-			
+
 			ControlFlowPass.Analyze(script2);
 			StackTransitionPass.Analyze(script2);
-			
+
 			using(var fw = new StreamWriter("script2.mjil"))
 				Disassembler.PrintScript(script2, new StreamColorWriter(fw));
 
@@ -76,27 +77,10 @@ namespace MajiroTools {
 			var script3 = Disassembler.DisassembleScript(reader2);
 
 			ControlFlowPass.Analyze(script3);
-			
+
 			using(var fw = new StreamWriter("script3.mjil"))
 				Disassembler.PrintScript(script3, new StreamColorWriter(fw));
 			Disassembler.PrintScript(script3, IColoredWriter.Console);
-
-			return;
-
-			foreach(var function in script.Functions) {
-				Disassembler.PrintFunctionHeader(function, IColoredWriter.Console);
-				foreach(var block in function.BasicBlocks) {
-					Disassembler.PrintLabel(block, IColoredWriter.Console);
-					foreach(var instruction in block.PhiNodes.Concat(block.Instructions)) {
-						StackTransitionPass.WriteStackState(instruction.StackState);
-						Console.CursorLeft = 40;
-						Disassembler.PrintInstruction(instruction, IColoredWriter.Console);
-					}
-					Console.WriteLine();
-				}
-				Console.WriteLine();
-			}
-			//*/
 		}
 	}
 }
