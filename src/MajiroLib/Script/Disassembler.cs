@@ -5,9 +5,11 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using CsvHelper;
 using Majiro.Script.Analysis.ControlFlow;
 using Majiro.Script.Analysis.StackTransition;
 using Majiro.Util;
+using VToolBase.Core;
 
 namespace Majiro.Script {
 	public static class Disassembler {
@@ -33,23 +35,34 @@ namespace Majiro.Script {
 			if(isEncrypted) Crc.Crypt32(byteCode);
 			using var ms = new MemoryStream(byteCode);
 
-			var instructions = DisassembleByteCode(ms);
+			var instructions = new List<Instruction>();
+			try {
+				DisassembleByteCode(ms, instructions);
 
-			return new MjoScript(entryPointOffset, functionIndex, instructions) {
-				EnableReadMark = readMarkSize != 0
-			};
+				return new MjoScript(entryPointOffset, functionIndex, instructions) {
+					EnableReadMark = readMarkSize != 0
+				};
+			}
+			catch(Exception e) {
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("Failed to disassemble script: " + e.Message);
+				if(instructions.Any()) {
+					Console.WriteLine("Last parsed instructions:");
+					for(int i = Math.Max(0, instructions.Count - 5); i < instructions.Count; i++) {
+						PrintInstruction(instructions[i], IColoredWriter.Console);
+					}
+				}
+				throw;
+			}
 		}
 
-		public static List<Instruction> DisassembleByteCode(Stream s) {
+		public static void DisassembleByteCode(Stream s, List<Instruction> instructions) {
 			var reader = new BinaryReader(s);
-			var list = new List<Instruction>();
 
 			while(s.Position != s.Length) {
 				var instruction = ReadInstruction(reader, (uint)s.Position);
-				list.Add(instruction);
+				instructions.Add(instruction);
 			}
-
-			return list;
 		}
 
 		public static Instruction ReadInstruction(BinaryReader reader, uint offset) {
@@ -191,6 +204,11 @@ namespace Majiro.Script {
 				if(operand == '0') continue;
 				writer.Write(' ');
 
+				if(operand == 'o' &&
+				   instruction.Flags.Scope() != MjoScope.Local &&
+				   instruction.VarOffset == -1)
+					continue;
+
 				switch(operand) {
 					case 't':
 						// type list
@@ -208,11 +226,24 @@ namespace Majiro.Script {
 
 					case 's':
 						// string data
-						writer.ForegroundColor = ConsoleColor.DarkGreen;
-						writer.Write('"');
-						writer.Write(instruction.String); // todo escape this properly
-						writer.Write('"');
-						writer.ResetColor();
+						if(instruction.String != null) {
+							writer.ForegroundColor = ConsoleColor.DarkGreen;
+							writer.Write('"');
+							writer.Write(instruction.String.Escape());
+							writer.Write('"');
+							writer.ResetColor();
+						}
+						else {
+							Debug.Assert(instruction.ExternalKey != null);
+							writer.ForegroundColor = ConsoleColor.Blue;
+							writer.Write('%');
+							writer.Write('{');
+							writer.ForegroundColor = ConsoleColor.White;
+							writer.Write(instruction.ExternalKey);
+							writer.ForegroundColor = ConsoleColor.Blue;
+							writer.Write('}');
+							writer.ResetColor();
+						}
 						break;
 
 					case 'f': {
@@ -281,7 +312,7 @@ namespace Majiro.Script {
 							writer.Write(instruction.JumpTarget.Name);
 						}
 						else {
-							writer.Write($"@~{instruction.JumpOffset:x8}");
+							writer.Write($"@~{(instruction.JumpOffset > 0 ? "+" : "")}{instruction.JumpOffset:x4}");
 						}
 						writer.ResetColor();
 						break;
@@ -384,6 +415,18 @@ namespace Majiro.Script {
 					writer.WriteLine();
 				first = false;
 				PrintFunction(function, writer);
+			}
+		}
+
+		public static void WriteResourceTable(MjoScript script, Stream s) {
+			using var writer = new CsvWriter(new StreamWriter(s));
+			writer.WriteField("Key");
+			writer.WriteField("Value");
+			writer.NextRecord();
+			foreach((string key, string value) in script.ExternalizedStrings.OrderBy(pair => int.Parse(pair.Key[1..]))) {
+				writer.WriteField(key);
+				writer.WriteField(value);
+				writer.NextRecord();
 			}
 		}
 

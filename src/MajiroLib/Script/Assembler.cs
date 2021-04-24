@@ -133,7 +133,6 @@ namespace Majiro.Script {
 							finishAfter = true;
 							break;
 					}
-					// todo handle escape sequences
 				}
 				else if(c == '"') {
 					inString = true;
@@ -332,9 +331,21 @@ namespace Majiro.Script {
 							break;
 
 						case 's':
-							instruction.String = Consume(StringLiteral).Value[1..^1];
-							currentOffset += 2;
-							currentOffset += Helpers.ShiftJis.GetByteCount(instruction.String) + 1;
+							if(ct.Value == "%") {
+								ConsumePunctuation("%");
+								ConsumePunctuation("{");
+								string key = Consume(Name).Value;
+								string value = instruction.Block.Function.Script.ExternalizedStrings[key];
+								ConsumePunctuation("}");
+								currentOffset += 2;
+								currentOffset += Helpers.ShiftJis.GetByteCount(value) + 1;
+							}
+							else {
+								string value = Consume(StringLiteral).Value[1..^1].Unescape();
+								instruction.String = value;
+								currentOffset += 2;
+								currentOffset += Helpers.ShiftJis.GetByteCount(value) + 1;
+							}
 							break;
 
 						case 'f':
@@ -348,6 +359,10 @@ namespace Majiro.Script {
 							break;
 
 						case 'o':
+							if(instruction.Flags.Scope() != MjoScope.Local && ct.Type != IntLiteral) {
+								instruction.VarOffset = -1;
+								break;
+							}
 							instruction.VarOffset = short.Parse(Consume(IntLiteral).Value);
 							currentOffset += 2;
 							break;
@@ -518,6 +533,8 @@ namespace Majiro.Script {
 		}
 
 		public static void AssembleScript(MjoScript script, BinaryWriter writer, bool encrypt = true, bool readMark = true) {
+
+			script.InternalizeStrings();
 
 			using var ms = new MemoryStream();
 			using var bw = new BinaryWriter(ms, Helpers.ShiftJis, true);

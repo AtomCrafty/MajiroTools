@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Majiro.Script.Analysis.ControlFlow {
@@ -17,7 +18,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 		public List<BasicBlock> BasicBlocks;
 
 		public MjoType[] ParameterTypes;
-		
+
 		public uint StartOffset => Script.Instructions[FirstInstructionIndex].Offset;
 		public bool IsEntryPoint => StartOffset == Script.EntryPointOffset;
 
@@ -31,7 +32,8 @@ namespace Majiro.Script.Analysis.ControlFlow {
 		}
 
 		public BasicBlock BasicBlockFromOffset(uint offset) {
-			return BasicBlocks.Find(block => Script.Instructions[block.FirstInstructionIndex].Offset == offset);
+			return BasicBlocks.Find(block => Script.Instructions[block.FirstInstructionIndex].Offset == offset)
+				?? throw new Exception("No block found at offset " + offset);
 		}
 	}
 }

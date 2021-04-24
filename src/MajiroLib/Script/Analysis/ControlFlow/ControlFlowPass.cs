@@ -188,7 +188,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 				lastInstruction.SwitchTargets = new BasicBlock[lastInstruction.SwitchCases.Length];
 				for(int i = 0; i < lastInstruction.SwitchCases.Length; i++) {
 					int caseOffset = lastInstruction.SwitchCases[i];
-					uint target = (uint)(lastInstruction.Offset + lastInstruction.Size + caseOffset);
+					uint target = (uint)(lastInstruction.Offset + 2 + 2 + 4 * (i + 1) + caseOffset);
 					lastInstruction.SwitchTargets[i] = function.BasicBlockFromOffset(target);
 				}
 			}

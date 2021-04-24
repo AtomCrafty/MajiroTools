@@ -14,6 +14,7 @@ namespace Majiro.Script {
 		public int JumpOffset;
 		public MjoType[] TypeList;
 		public string String;
+		public string ExternalKey;
 		public int IntValue;
 		public float FloatValue;
 		public ushort ArgumentCount;
@@ -31,6 +32,7 @@ namespace Majiro.Script {
 		public bool IsReturn => Opcode.Value == 0x82b;
 		public bool IsArgCheck => Opcode.Value == 0x836;
 		public bool IsAlloca => Opcode.Value == 0x829;
+		public bool IsText => Opcode.Value == 0x840;
 		public bool IsSysCall => Opcode.Value.IsOneOf((ushort)0x834, (ushort)0x835);
 		public bool IsCall => Opcode.Value.IsOneOf((ushort)0x80f, (ushort)0x810);
 		public bool IsPhi => Opcode.Mnemonic == "phi";
