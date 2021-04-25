@@ -62,6 +62,13 @@ namespace Majiro.Script {
 			}
 			return ~result;
 		}
+		public static uint Hash32At(byte[] bytes, int startIndex, int count, uint init = 0u) {
+			uint result = ~init;
+			for(int i = 0; i < count; i++) {
+				result = (result >> 8) ^ Crc32Table[(byte) (result ^ bytes[startIndex + i])];
+			}
+			return ~result;
+		}
 
 		public static uint HashInverse32(string s, uint init) => HashInverse32(Helpers.ShiftJis.GetBytes(s), init);
 
@@ -73,6 +80,14 @@ namespace Majiro.Script {
 			}
 			return ~result;
 		}
+		public static uint HashInverse32At(byte[] bytes, int startIndex, int count, uint init) {
+			uint result = ~init;
+			for(int i = 0; i < count; i++) {
+				uint index = Crc32Index[result >> 24];
+				result = ((result ^ Crc32Table[index]) << 8) | (index ^ bytes[startIndex + i]);
+			}
+			return ~result;
+		}
 
 		public static ulong Hash64(string s, ulong init = 0ul) => Hash64(Helpers.ShiftJis.GetBytes(s), init);
 
@@ -80,6 +95,13 @@ namespace Majiro.Script {
 			ulong result = ~init;
 			foreach(byte b in bytes) {
 				result = (result >> 8) ^ Crc64Table[(byte)(result ^ b)];
+			}
+			return ~result;
+		}
+		public static ulong Hash64At(byte[] bytes, int startIndex, int count, ulong init = 0ul) {
+			ulong result = ~init;
+			for(int i = 0; i < count; i++) {
+				result = (result >> 8) ^ Crc64Table[(byte) (result ^ bytes[startIndex + i])];
 			}
 			return ~result;
 		}
