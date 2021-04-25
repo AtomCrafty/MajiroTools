@@ -331,15 +331,19 @@ namespace Majiro.Script {
 						if(instruction.SwitchTargets != null) {
 							foreach(var targetBlock in instruction.SwitchTargets) {
 								if(!first) writer.Write(", ");
+								writer.ForegroundColor = ConsoleColor.Magenta;
 								writer.Write('@');
 								writer.Write(targetBlock.Name);
+								writer.ResetColor();
 								first = false;
 							}
 						}
 						else {
 							foreach(int offset in instruction.SwitchCases) {
 								if(!first) writer.Write(", ");
+								writer.ForegroundColor = ConsoleColor.Magenta;
 								writer.Write($"@~{offset:x8}");
+								writer.ResetColor();
 								first = false;
 							}
 						}
@@ -363,6 +367,13 @@ namespace Majiro.Script {
 						}
 						break;
 				}
+			}
+
+			if(instruction.IsSysCall && Data.KnownSyscallNames.TryGetValue(instruction.Hash, out string name)) {
+				writer.ForegroundColor = ConsoleColor.DarkGray;
+				writer.Write(" ; $");
+				writer.Write(name);
+				writer.ResetColor();
 			}
 
 			writer.WriteLine();
