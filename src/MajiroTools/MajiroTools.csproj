@@ -1,50 +1,46 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-    <AssemblyName>maji</AssemblyName>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>netcoreapp3.1</TargetFramework>
+		<AssemblyName>maji</AssemblyName>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\MajiroLib\MajiroLib.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\MajiroLib\MajiroLib.csproj" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Update="AutoVersion.tt">
-      <LastGenOutput>AutoVersion.cs</LastGenOutput>
-      <Generator>TextTemplatingFileGenerator</Generator>
-    </None>
-  </ItemGroup>
+	<ItemGroup>
+		<Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
-  </ItemGroup>
+	<Import Project="..\VToolBase\Cli\Cli.projitems" Label="Shared" />
 
-  <Import Project="..\VToolBase\Cli\Cli.projitems" Label="Shared" />
+	<Import Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v16.0\TextTemplating\Microsoft.TextTemplating.targets" />
 
-  <Import Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v16.0\TextTemplating\Microsoft.TextTemplating.targets" />
+	<PropertyGroup>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+	</PropertyGroup>
 
-  <PropertyGroup>
-	  <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-	  <TransformOnBuild>true</TransformOnBuild>
-	  <OverwriteReadOnlyOutputFiles>true</OverwriteReadOnlyOutputFiles>
-	  <TransformOutOfDateOnly>false</TransformOutOfDateOnly>
-  </PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)'!='Debug'">
+		<TransformOnBuild>true</TransformOnBuild>
+		<OverwriteReadOnlyOutputFiles>true</OverwriteReadOnlyOutputFiles>
+		<TransformOutOfDateOnly>false</TransformOutOfDateOnly>
+	</PropertyGroup>
 
-  <ItemGroup>
-	  <None Update="AutoVersion.tt">
-		  <Generator>TextTemplatingFileGenerator</Generator>
-		  <LastGenOutput>AutoVersion.cs</LastGenOutput>
-	  </None>
-  </ItemGroup>
+	<ItemGroup>
+		<None Update="AutoVersion.tt">
+			<Generator>TextTemplatingFileGenerator</Generator>
+			<LastGenOutput>AutoVersion.cs</LastGenOutput>
+		</None>
+	</ItemGroup>
 
-  <ItemGroup>
-	  <Compile Update="AutoVersion.cs">
-		  <DesignTime>True</DesignTime>
-		  <AutoGen>True</AutoGen>
-		  <DependentUpon>AutoVersion.tt</DependentUpon>
-	  </Compile>
-  </ItemGroup>
+	<ItemGroup>
+		<Compile Update="AutoVersion.cs">
+			<DesignTime>True</DesignTime>
+			<AutoGen>True</AutoGen>
+			<DependentUpon>AutoVersion.tt</DependentUpon>
+		</Compile>
+	</ItemGroup>
 
 </Project>

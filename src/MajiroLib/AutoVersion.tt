@@ -6,13 +6,10 @@ using System.Reflection;
 [assembly: AssemblyVersion("<#= this.Major #>.<#= this.Minor #>.<#= this.DaysSinceProjectStarted #>.<#= this.MinutesSinceMidnight  #>")]
 
 <#+
-
  int Major = 1;
  int Minor = 0;
  
  static DateTime ProjectStartedDate = new DateTime(year: 2021, month: 4, day: 1);
  int DaysSinceProjectStarted = (int)((DateTime.UtcNow - ProjectStartedDate).TotalDays);
-
  int MinutesSinceMidnight = (int)DateTime.UtcNow.TimeOfDay.TotalMinutes;
-
 #>
