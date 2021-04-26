@@ -49,7 +49,7 @@ namespace Majiro.Script {
 			get => target;
 			set {
 				target = value;
-				UpdateExpected(true, false); // update both expected "single" and "set" values
+				UpdateExpected(true, false); // update expected "single" values only
 				Reset();
 			}
 		}
@@ -75,7 +75,7 @@ namespace Majiro.Script {
 			get => postfix;
 			set {
 				postfix = value;// ?? throw new ArgumentNullException(nameof(Postfix));
-				UpdateExpected(true, false); // update expected "single" values only
+				UpdateExpected(true, true); // update both expected "single" and "set" values
 				Reset();
 			}
 		}
