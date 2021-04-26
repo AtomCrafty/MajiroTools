@@ -218,13 +218,16 @@ namespace Majiro.Script {
 				// Next for(bufferIndex)-loop iteration will push out first 4 chars from any combination:
 				//  charset = "ABC"
 				//  [ACBA]AA -> [AAAA]BA  (when depthFirst==true)
-				if(depthFirst) {
-					for(int i = 0; i < Math.Min(4, length); i++)
-						levels[i] = charsetBytes.Length - 1;
-				}
-				else {
-					for(int i = length - 1; i >= Math.Max(0, length - 4); i--)
-						levels[i] = charsetBytes.Length - 1;
+				if(expectedSet == null) {
+					// we can't use this behavior when targetting multiple hashes
+					if(depthFirst) {
+						for(int i = 0; i < Math.Min(4, length); i++)
+							levels[i] = charsetBytes.Length - 1;
+					}
+					else {
+						for(int i = length - 1; i >= Math.Max(0, length - 4); i--)
+							levels[i] = charsetBytes.Length - 1;
+					}
 				}
 			}
 			else {
