@@ -4,7 +4,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Text;
+using CsvHelper;
 using Majiro.Script.Analysis.ControlFlow;
 using Majiro.Script.Analysis.StackTransition;
 using VToolBase.Core;
@@ -53,9 +55,11 @@ namespace Majiro.Script {
 		internal static IEnumerable<Token> Tokenize(TextReader reader) {
 			var sb = new StringBuilder();
 
+			const string punctuationChars = "([{,%}])";
+
 			TokenType GetType(string text) {
 				if(text.EndsWith(':') || text.StartsWith('@'))
-					return int.TryParse(text[..^1], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _) ? Address : Label;
+					return int.TryParse(text[..^1], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _) ? Address : TokenType.Label;
 				if(text.StartsWith('#'))
 					return LineNo;
 				if(text.StartsWith('$'))
@@ -66,7 +70,7 @@ namespace Majiro.Script {
 					return FloatLiteral;
 				if(text.Contains('"'))
 					return StringLiteral;
-				if(text.Length == 1 && "([{,}])".Contains(text[0]))
+				if(text.Length == 1 && punctuationChars.Contains(text[0]))
 					return Punctuation;
 				if(text == "func")
 					return Func;
@@ -105,6 +109,7 @@ namespace Majiro.Script {
 
 			bool inString = false;
 			bool inEscape = false;
+			bool inComment = false;
 
 			while(true) {
 				int x = reader.Read();
@@ -137,7 +142,16 @@ namespace Majiro.Script {
 				else if(c == '"') {
 					inString = true;
 				}
-				else if("([{,}])".Contains(c)) {
+				else if(inComment) {
+					discard = true;
+					if(c == '\n')
+						inComment = false;
+				}
+				else if(c == ';') {
+					discard = true;
+					inComment = true;
+				}
+				else if(punctuationChars.Contains(c)) {
 					finishBefore = true;
 					finishAfter = true;
 				}
@@ -161,7 +175,7 @@ namespace Majiro.Script {
 			}
 		}
 
-		public static MjoScript Parse(TextReader reader) {
+		public static MjoScript Parse(TextReader reader, Dictionary<string, string> externalizedStrings = null) {
 			var tokens = Tokenize(reader);
 			using var enumerator = tokens.GetEnumerator();
 
@@ -319,7 +333,9 @@ namespace Majiro.Script {
 					? PhiInstruction.PhiOpcode
 					: Opcode.ByMnemonic[mnemonic];
 
-				var instruction = new Instruction(opcode, (uint)currentOffset);
+				var instruction = new Instruction(opcode, (uint)currentOffset) {
+					Block = block
+				};
 				currentOffset += 2;
 
 				foreach(char operand in opcode.Encoding) {
@@ -335,7 +351,8 @@ namespace Majiro.Script {
 								ConsumePunctuation("%");
 								ConsumePunctuation("{");
 								string key = Consume(Name).Value;
-								string value = instruction.Block.Function.Script.ExternalizedStrings[key];
+								string value = externalizedStrings[key];
+								instruction.String = value;
 								ConsumePunctuation("}");
 								currentOffset += 2;
 								currentOffset += Helpers.ShiftJis.GetByteCount(value) + 1;
@@ -389,7 +406,7 @@ namespace Majiro.Script {
 							break;
 
 						case 'j':
-							string jumpLabel = Consume(Label).Value[1..];
+							string jumpLabel = Consume(TokenType.Label).Value[1..];
 							if(jumpLabel.StartsWith('~')) {
 								instruction.JumpOffset = int.Parse(jumpLabel[1..], NumberStyles.HexNumber);
 							}
@@ -407,7 +424,7 @@ namespace Majiro.Script {
 						case 'c':
 							var switchTargets = new List<BasicBlock>();
 							do {
-								string switchLabel = Consume(Label).Value[1..];
+								string switchLabel = Consume(TokenType.Label).Value[1..];
 								switchTargets.Add(GetBlock(block.Function, switchLabel));
 							} while(TryConsumePunctuation(out _, ","));
 
@@ -418,7 +435,7 @@ namespace Majiro.Script {
 
 						case 'p':
 							do {
-								Consume(Label);
+								Consume(TokenType.Label);
 							} while(TryConsumePunctuation(out _, ","));
 							break;
 					}
@@ -430,13 +447,13 @@ namespace Majiro.Script {
 
 			BasicBlock ParseBlock(Function function) {
 
-				string label = Consume(Label).Value[..^1];
+				string label = Consume(TokenType.Label).Value[..^1];
 				var block = GetBlock(function, label);
 
 				block.FirstInstructionIndex = instructions.Count;
 				block.PhiNodes = new List<PhiInstruction>();
 
-				while(ct.Type != Label && ct.Value != "}") {
+				while(ct.Type != TokenType.Label && ct.Value != "}") {
 					var instruction = ParseInstruction(block);
 					if(instruction is PhiInstruction phi)
 						block.PhiNodes.Add(phi);
@@ -532,7 +549,17 @@ namespace Majiro.Script {
 			return script;
 		}
 
-		public static void AssembleScript(MjoScript script, BinaryWriter writer, bool encrypt = true, bool readMark = true) {
+		private struct KVPair {
+			public string Key { get; set; }
+			public string Value { get; set; }
+		}
+
+		public static Dictionary<string, string> ReadResourceTable(Stream s) {
+			using var reader = new CsvReader(s.NewTextReader());
+			return reader.GetRecords<KVPair>().ToDictionary(pair => pair.Key, pair => pair.Value);
+		}
+
+		public static void AssembleScript(MjoScript script, BinaryWriter writer, bool encrypt = true) {
 
 			script.InternalizeStrings();
 
@@ -551,7 +578,7 @@ namespace Majiro.Script {
 				: "MajiroObjV1.000\0"));
 
 			writer.Write(script.EntryPointOffset);
-			writer.Write(readMark ? readMarkCount : 0);
+			writer.Write(script.EnableReadMark ? readMarkCount : 0);
 			writer.Write(script.Index.Count);
 			foreach(var entry in script.Index) {
 				writer.Write(entry.NameHash);
