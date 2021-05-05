@@ -27,9 +27,11 @@ namespace MajiroTools.Commands {
 
 			string file = Arguments[0];
 			if(file.EndsWith(".mjo", StringComparison.InvariantCultureIgnoreCase)) {
-				Console.WriteLine("Detected as mjo script. Disassembling.");
+				Output.WriteLine("Detected as mjo script. Disassembling.");
 				return CommandManager.TryRun("disassemble", "--print", "--file=false", file);
 			}
+
+			Output.WriteLineColored("\acError\a-: AutoCommand was unable to determine an appropriate action");
 
 			return false;
 		}
