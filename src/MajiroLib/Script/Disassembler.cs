@@ -179,7 +179,15 @@ namespace Majiro.Script {
 				writer.Write("entrypoint ");
 				writer.ResetColor();
 			}
-			writer.WriteLine("{");
+			writer.Write("{");
+			if(function.Script.Project != null && function.Script.Project.TryGetFunctionName(function.NameHash, out string name)
+			   || Data.KnownFunctionNamesByHash.TryGetValue(function.NameHash, out name)) {
+				writer.ForegroundColor = ConsoleColor.DarkGray;
+				writer.Write(" ; ");
+				writer.Write(name);
+				writer.ResetColor();
+			}
+			writer.WriteLine();
 		}
 
 		public static void PrintLabel(BasicBlock block, IColoredWriter writer) {
@@ -242,6 +250,11 @@ namespace Majiro.Script {
 							writer.Write(instruction.ExternalKey);
 							writer.ForegroundColor = ConsoleColor.Blue;
 							writer.Write('}');
+							writer.ForegroundColor = ConsoleColor.DarkGray;
+							writer.Write(" ; ");
+							writer.Write('"');
+							writer.Write(instruction.Block.Function.Script.ExternalizedStrings[instruction.ExternalKey].Escape());
+							writer.Write('"');
 							writer.ResetColor();
 						}
 						break;
@@ -369,11 +382,37 @@ namespace Majiro.Script {
 				}
 			}
 
-			if(instruction.IsSysCall && Data.KnownSyscallNames.TryGetValue(instruction.Hash, out string name)) {
+			if(instruction.IsSysCall && Data.KnownSyscallNamesByHash.TryGetValue(instruction.Hash, out string name)) {
 				writer.ForegroundColor = ConsoleColor.DarkGray;
 				writer.Write(" ; $");
 				writer.Write(name);
 				writer.ResetColor();
+			}
+			else if(instruction.IsCall) {
+				var project = instruction.Block.Function.Script.Project;
+				uint hash = instruction.Hash;
+				if(project != null && project.TryGetFunctionName(hash, out string calleeName)
+				   || Data.KnownFunctionNamesByHash.TryGetValue(hash, out calleeName)) {
+					writer.ForegroundColor = ConsoleColor.DarkGray;
+					writer.Write(" ; ");
+					writer.Write(calleeName);
+					writer.ResetColor();
+				}
+				else if(project != null && project.FunctionMap.TryGetValue(hash, out var functions) && functions.Any()) {
+					writer.ForegroundColor = ConsoleColor.DarkGray;
+					writer.Write(" ; declared in ");
+					writer.Write(functions[0].DeclaringScript);
+					writer.ResetColor();
+				}
+			}
+			else if(instruction.IsLoad || instruction.IsStore) {
+				uint hash = instruction.Hash;
+				if(Data.KnownVariableNamesByHash.TryGetValue(hash, out string varName)) {
+					writer.ForegroundColor = ConsoleColor.DarkGray;
+					writer.Write(" ; ");
+					writer.Write(varName);
+					writer.ResetColor();
+				}
 			}
 
 			writer.WriteLine();

@@ -35,6 +35,8 @@ namespace Majiro.Script {
 		public bool IsText => Opcode.Value == 0x840;
 		public bool IsSysCall => Opcode.Value.IsOneOf((ushort)0x834, (ushort)0x835);
 		public bool IsCall => Opcode.Value.IsOneOf((ushort)0x80f, (ushort)0x810);
+		public bool IsLoad => Opcode.Mnemonic.StartsWith("ld");
+		public bool IsStore => Opcode.Mnemonic.StartsWith("st");
 		public bool IsPhi => Opcode.Mnemonic == "phi";
 
 		public Instruction(Opcode opcode, uint offset) {
