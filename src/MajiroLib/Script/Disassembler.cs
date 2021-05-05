@@ -430,7 +430,7 @@ namespace Majiro.Script {
 		}
 
 		public static void WriteResourceTable(MjoScript script, Stream s) {
-			using var writer = new CsvWriter(new StreamWriter(s));
+			using var writer = new CsvWriter(new StreamWriter(s), CultureInfo.InvariantCulture);
 			writer.WriteField("Key");
 			writer.WriteField("Value");
 			writer.NextRecord();

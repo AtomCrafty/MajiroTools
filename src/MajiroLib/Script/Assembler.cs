@@ -549,14 +549,9 @@ namespace Majiro.Script {
 			return script;
 		}
 
-		private struct KVPair {
-			public string Key { get; set; }
-			public string Value { get; set; }
-		}
-
 		public static Dictionary<string, string> ReadResourceTable(Stream s) {
-			using var reader = new CsvReader(s.NewTextReader());
-			return reader.GetRecords<KVPair>().ToDictionary(pair => pair.Key, pair => pair.Value);
+			using var reader = new CsvReader(s.NewTextReader(), CultureInfo.InvariantCulture);
+			return reader.GetRecords(new { Key = "", Value = "" }).ToDictionary(pair => pair.Key, pair => pair.Value);
 		}
 
 		public static void AssembleScript(MjoScript script, BinaryWriter writer, bool encrypt = true) {
