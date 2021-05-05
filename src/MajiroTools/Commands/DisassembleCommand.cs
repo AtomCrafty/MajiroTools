@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using Majiro.Project;
 using Majiro.Script;
 using Majiro.Script.Analysis.ControlFlow;
 using Majiro.Util;
@@ -21,7 +22,7 @@ namespace MajiroTools.Commands {
 		};
 
 		public override (char shorthand, string name, string fallback, string description)[] Flags => new[] {
-			('e', "externalize", "true", "Whether to externalize message strings"),
+			('e', "externalize", "true", "Whether to externalize message strings. Valid values are \abfalse\a-, \abtrue\a- and \aball\a-. \abtrue\a- only externalizes message strings, while \aball\a- exports all string literals."),
 			('p', "print", "false", "Whether to print the disassembly to the console"),
 			('f', "file", "true", "Whether to print the disassembly to a file"),
 			('q', "quiet", "false", "Disable user-friendly output"),
@@ -38,6 +39,11 @@ namespace MajiroTools.Commands {
 			using var reader = File.OpenRead(sourcePath).NewReader();
 			var script = Disassembler.DisassembleScript(reader);
 
+			string projectPath = Parameters.GetString("project", null);
+			if(projectPath != null) {
+				script.Project = MjProject.Load(projectPath);
+			}
+
 			ControlFlowPass.Analyze(script);
 
 			if(Parameters.GetBool("print", 'p', false)) {
@@ -46,7 +52,7 @@ namespace MajiroTools.Commands {
 
 			if(Parameters.GetBool("file", 'f', true)) {
 				if(Parameters.GetBool("externalize", 'e', true)) {
-					script.ExternalizeStrings();
+					script.ExternalizeStrings(Parameters.GetString("externalize", 'e', null) == "all");
 					string resourcePath = Path.ChangeExtension(sourcePath, ".mjres");
 					using var s = File.Open(resourcePath, FileMode.Create);
 					Disassembler.WriteResourceTable(script, s);

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using Majiro.Project;
 using Majiro.Script.Analysis.ControlFlow;
 
 namespace Majiro.Script {
@@ -10,6 +11,7 @@ namespace Majiro.Script {
 		public readonly List<Instruction> Instructions;
 		public bool EnableReadMark;
 
+		public MjProject Project;
 		public List<Function> Functions;
 		public Dictionary<string, string> ExternalizedStrings;
 
@@ -25,13 +27,16 @@ namespace Majiro.Script {
 			return Instructions.FindIndex(instruction => instruction.Offset == offset);
 		}
 
-		public void ExternalizeStrings() {
+		public void ExternalizeStrings(bool externalizeLiterals) {
 			if(ExternalizedStrings != null) return;
 
 			ExternalizedStrings = new Dictionary<string, string>();
 			int messageCount = 0;
 
-			foreach(var instruction in Instructions.Where(inst => inst.IsText)) {
+			foreach(var instruction in Instructions) {
+				if(instruction.String == null) continue;
+				if(!externalizeLiterals && !instruction.IsText) continue;
+
 				Debug.Assert(instruction.String != null);
 				Debug.Assert(instruction.ExternalKey == null);
 
@@ -47,17 +52,19 @@ namespace Majiro.Script {
 		public void InternalizeStrings() {
 			if(ExternalizedStrings == null) return;
 
-			foreach(var instruction in Instructions.Where(inst => inst.IsText)) {
+			foreach(var instruction in Instructions) {
+				if(instruction.ExternalKey == null) continue;
+
 				Debug.Assert(instruction.String == null);
 				Debug.Assert(instruction.ExternalKey != null);
-				
+
 				string key = instruction.ExternalKey;
 				string value = ExternalizedStrings[key];
 
 				instruction.String = value;
 				instruction.ExternalKey = null;
 			}
-			
+
 			ExternalizedStrings = null;
 		}
 	}
