@@ -16,6 +16,7 @@ namespace MajiroTools {
 			CommandManager.Register("unhash", parameters => new UnhashCommand(parameters));
 			CommandManager.Register("disassemble", parameters => new DisassembleCommand(parameters));
 			CommandManager.Register("assemble", parameters => new AssembleCommand(parameters));
+			CommandManager.Register("project", parameters => new ProjectCommand(parameters));
 
 			if(!CommandManager.TryRun(args)) {
 				if(args.Length == 0)
