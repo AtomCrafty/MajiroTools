@@ -5,6 +5,7 @@ using Majiro.Script.Analysis.StackTransition;
 namespace Majiro.Script.Analysis.ControlFlow {
 	public class BasicBlock {
 		public readonly Function Function;
+		public MjoScript Script => Function.Script;
 
 		public int FirstInstructionIndex = -1;
 		public int LastInstructionIndex = -1;
@@ -20,7 +21,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 
 		public bool IsDestructorEntryBlock =>
 			Predecessors.Count == 1 && Predecessors[0].LastInstruction.Opcode.Value == 0x847;
-		
+
 		public Instruction FirstInstruction => Function.Script.Instructions[FirstInstructionIndex];
 		public Instruction LastInstruction => Function.Script.Instructions[LastInstructionIndex];
 
@@ -32,16 +33,13 @@ namespace Majiro.Script.Analysis.ControlFlow {
 			.Range(FirstInstructionIndex, InstructionCount)
 			.Select(index => Function.Script.Instructions[index]);
 
-		public uint StartOffset => Instructions.First().Offset;
+		public uint? StartOffset => Instructions.First().Offset;
 
-		public string Name => IsEntryBlock ? "entry" :
-							  IsExitBlock ? $"exit_{StartOffset:x4}" :
-							  IsUnreachable ? $"unreachable_{StartOffset:x4}" :
-							  IsDestructorEntryBlock ? $"destructor_{StartOffset:x4}"
-											: $"block_{StartOffset:x4}";
+		public string Name;
 
-		public BasicBlock(Function function) {
+		public BasicBlock(Function function, string name) {
 			Function = function;
+			Name = name;
 		}
 
 		public override string ToString() => Name;

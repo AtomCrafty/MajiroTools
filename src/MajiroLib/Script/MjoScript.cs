@@ -1,26 +1,60 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Majiro.Project;
 using Majiro.Script.Analysis.ControlFlow;
 
 namespace Majiro.Script {
+	public enum MjoScriptRepresentation {
+		InstructionList,
+		ControlFlowGraph,
+
+		InTransition
+	}
+
+	public struct FunctionIndexEntry {
+		public uint NameHash;
+		public uint Offset;
+	}
+
 	public class MjoScript {
-		public uint EntryPointOffset;
-		public readonly List<FunctionEntry> Index;
-		public readonly List<Instruction> Instructions;
-		public bool EnableReadMark;
-
+		// general info
 		public MjProject Project;
-		public List<Function> Functions;
+		public bool EnableReadMark;
+		public readonly List<Instruction> Instructions = new List<Instruction>();
 		public Dictionary<string, string> ExternalizedStrings;
+		public MjoScriptRepresentation Representation;
 
-		public Function EntryPointFunction => Functions?.Single(func => func.StartOffset == EntryPointOffset);
+		// InstructionList representation
+		public List<FunctionIndexEntry> FunctionIndex;
+		public uint? EntryPointOffset;
 
-		public MjoScript(uint entryPointOffset, List<FunctionEntry> index, List<Instruction> instructions) {
-			EntryPointOffset = entryPointOffset;
-			Index = index;
-			Instructions = instructions;
+		// ControlFlowGraph representation
+		public List<Function> Functions;
+		public IEnumerable<BasicBlock> Blocks => Functions?.SelectMany(func => func.Blocks);
+		public Function EntryPointFunction;
+
+		public void SanityCheck() {
+			Debug.Assert(Instructions != null);
+			switch(Representation) {
+				case MjoScriptRepresentation.InstructionList:
+					Debug.Assert(FunctionIndex != null);
+					Debug.Assert(EntryPointOffset != null);
+					Debug.Assert(Functions == null);
+					Debug.Assert(EntryPointFunction == null);
+					break;
+				case MjoScriptRepresentation.ControlFlowGraph:
+					Debug.Assert(FunctionIndex == null);
+					Debug.Assert(EntryPointOffset == null);
+					Debug.Assert(Functions != null);
+					Debug.Assert(EntryPointFunction != null);
+					break;
+			}
+
+			foreach(var instruction in Instructions) {
+				instruction.SanityCheck(Representation);
+			}
 		}
 
 		public int InstructionIndexFromOffset(uint offset) {
@@ -67,10 +101,7 @@ namespace Majiro.Script {
 
 			ExternalizedStrings = null;
 		}
-	}
 
-	public struct FunctionEntry {
-		public uint NameHash;
-		public uint Offset;
+		public void ToInstructionList() => ControlFlowPass.ToInstructionList(this);
 	}
 }

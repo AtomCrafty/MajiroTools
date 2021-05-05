@@ -15,12 +15,12 @@ namespace Majiro.Script.Analysis.ControlFlow {
 
 		public BasicBlock EntryBlock;
 		public List<BasicBlock> ExitBlocks;
-		public List<BasicBlock> BasicBlocks;
+		public List<BasicBlock> Blocks;
 
 		public MjoType[] ParameterTypes;
 
-		public uint StartOffset => Script.Instructions[FirstInstructionIndex].Offset;
-		public bool IsEntryPoint => StartOffset == Script.EntryPointOffset;
+		public uint? StartOffset => Script.Instructions[FirstInstructionIndex].Offset;
+		public bool IsEntryPoint => this == Script.EntryPointFunction;
 
 		public IEnumerable<Instruction> Instructions => Enumerable
 			.Range(FirstInstructionIndex, InstructionCount)
@@ -32,7 +32,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 		}
 
 		public BasicBlock BasicBlockFromOffset(uint offset) {
-			return BasicBlocks.Find(block => Script.Instructions[block.FirstInstructionIndex].Offset == offset)
+			return Blocks.Find(block => Script.Instructions[block.FirstInstructionIndex].Offset == offset)
 				?? throw new Exception("No block found at offset " + offset);
 		}
 	}

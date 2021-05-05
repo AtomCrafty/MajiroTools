@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Reflection.Emit;
 using System.Text;
 using CsvHelper;
 using Majiro.Script.Analysis.ControlFlow;
@@ -25,12 +24,14 @@ namespace Majiro.Script {
 			Name,
 			Hash,
 			IntLiteral,
+			HexLiteral,
 			FloatLiteral,
 			StringLiteral,
 			LineNo,
 			Resource,
 			Punctuation,
 			Func,
+			Index,
 			EntryPoint,
 			VarType,
 			Scope,
@@ -43,10 +44,14 @@ namespace Majiro.Script {
 		internal struct Token {
 			public TokenType Type;
 			public string Value;
+			public int Row;
+			public int Column;
 
-			public Token(TokenType type, string value) {
+			public Token(TokenType type, string value, int row, int column) {
 				Type = type;
 				Value = value;
+				Row = row;
+				Column = column;
 			}
 
 			public override string ToString() => $"{Type}: '{Value}'";
@@ -66,6 +71,8 @@ namespace Majiro.Script {
 					return Hash;
 				if(int.TryParse(text, out _))
 					return IntLiteral;
+				if((text.StartsWith("0x") || text.StartsWith("0X")) && int.TryParse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _))
+					return HexLiteral;
 				if(float.TryParse(text, out _))
 					return FloatLiteral;
 				if(text.Contains('"'))
@@ -74,6 +81,8 @@ namespace Majiro.Script {
 					return Punctuation;
 				if(text == "func")
 					return Func;
+				if(text == "index")
+					return TokenType.Index;
 				if(text.IsOneOf("entry", "entrypoint"))
 					return EntryPoint;
 				if(text.ToLower().IsOneOf("int", "float", "string", "intarray", "floatarray", "stringarray"))
@@ -82,9 +91,9 @@ namespace Majiro.Script {
 					return Scope;
 				if(text.ToLower().IsOneOf("dim1", "dim2", "dim3"))
 					return Dimension;
-				if(text.StartsWith("modifier_"))
+				if(text.ToLower().IsOneOf("preinc", "predec", "postinc", "postdec"))
 					return Modifier;
-				if(text.StartsWith("invert_"))
+				if(text.ToLower().IsOneOf("invert_numeric", "invert_boolean", "invert_bitwise"))
 					return InvertMode;
 				if(text.ToLower() == "readmark")
 					return ReadMark;
@@ -95,11 +104,14 @@ namespace Majiro.Script {
 				return Name;
 			}
 
+			int row = 1;
+			int column = 1;
+
 			bool FinishToken(out Token token) {
 				if(sb.Length > 0) {
 					string text = sb.ToString();
 					var type = GetType(text);
-					token = new Token(type, text);
+					token = new Token(type, text, row, column);
 					sb.Clear();
 					return true;
 				}
@@ -117,7 +129,7 @@ namespace Majiro.Script {
 				if(x == -1) {
 					if(FinishToken(out var token))
 						yield return token;
-					yield return new Token(EndOfFile, "");
+					yield return new Token(EndOfFile, "", row, column);
 					yield break;
 				}
 
@@ -127,25 +139,42 @@ namespace Majiro.Script {
 
 				char c = (char)x;
 
-				if(inString) {
-					switch(c) {
-						case '\\' when !inEscape:
-							inEscape = true;
-							continue;
-
-						case '"' when !inEscape:
-							inString = false;
-							finishAfter = true;
-							break;
-					}
+				if(c == '\n') {
+					row++;
+					column = 1;
 				}
-				else if(c == '"') {
-					inString = true;
+				else if(c == '\t') {
+					const int tabSize = 4;
+					column += tabSize - (column - 1) % tabSize;
+				}
+				else {
+					column++;
+				}
+
+				if(inString) {
+					if(inEscape) {
+						inEscape = false;
+					}
+					else {
+						switch(c) {
+							case '\\':
+								inEscape = true;
+								break;
+
+							case '"':
+								inString = false;
+								finishAfter = true;
+								break;
+						}
+					}
 				}
 				else if(inComment) {
 					discard = true;
 					if(c == '\n')
 						inComment = false;
+				}
+				else if(c == '"') {
+					inString = true;
 				}
 				else if(c == ';') {
 					discard = true;
@@ -175,7 +204,7 @@ namespace Majiro.Script {
 			}
 		}
 
-		public static MjoScript Parse(TextReader reader, Dictionary<string, string> externalizedStrings = null) {
+		public static MjoScript Parse(TextReader reader) {
 			var tokens = Tokenize(reader);
 			using var enumerator = tokens.GetEnumerator();
 
@@ -192,7 +221,7 @@ namespace Majiro.Script {
 			Token Consume(params TokenType[] allowedTypes) {
 				var token = ct;
 				if(allowedTypes.Any() && !allowedTypes.Contains(ct.Type))
-					throw new Exception($"Unexpected token {ct.Type} '{ct.Value}', expected one of these: {string.Join(", ", allowedTypes)}");
+					throw new Exception($"Unexpected token {ct.Type} '{ct.Value}' ({token.Row}, {token.Column}), expected one of these: {string.Join(", ", allowedTypes)}");
 				Advance();
 				return token;
 			}
@@ -211,7 +240,7 @@ namespace Majiro.Script {
 			Token ConsumePunctuation(params string[] allowedText) {
 				var token = Consume(Punctuation);
 				if(allowedText.Any() && !allowedText.Contains(token.Value))
-					throw new Exception($"Unexpected token {token.Type} '{token.Value}', expected one of these: {string.Join(", ", allowedText)}");
+					throw new Exception($"Unexpected token {token.Type} '{token.Value}' ({token.Row}, {token.Column}), expected one of these: {string.Join(", ", allowedText)}");
 				return token;
 			}
 
@@ -222,9 +251,7 @@ namespace Majiro.Script {
 				return true;
 			}
 
-			var instructions = new List<Instruction>();
 			var blocks = new Dictionary<string, BasicBlock>();
-			long currentOffset = 0;
 
 			uint ParseHash() => uint.Parse(Consume(Hash).Value[1..], NumberStyles.HexNumber);
 
@@ -270,7 +297,7 @@ namespace Majiro.Script {
 				var invalid => throw new Exception($"invalid invert mode: {invalid}")
 			};
 
-			int ParseDimension() => Consume(InvertMode).Value.ToLower() switch {
+			int ParseDimension() => Consume(Dimension).Value.ToLower() switch {
 				"dim1" => 1,
 				"dim2" => 2,
 				"dim3" => 3,
@@ -316,9 +343,32 @@ namespace Majiro.Script {
 				return FlagHelpers.Build(type, scope, modifier, invertMode, dimension);
 			}
 
+			int ParseIntLiteral() {
+				var token = Consume(IntLiteral, HexLiteral, Hash);
+				return token.Type switch {
+					IntLiteral => int.Parse(token.Value),
+					HexLiteral => int.Parse(token.Value[2..], NumberStyles.HexNumber),
+					Hash => int.Parse(token.Value[1..], NumberStyles.HexNumber),
+					_ => throw new Exception("unreachable")
+				};
+			}
+
+			static int ParseRelativeJumpLabel(string jumpLabel) {
+				Debug.Assert(jumpLabel.StartsWith('~'));
+				Debug.Assert(jumpLabel.Length >= 2);
+				switch(jumpLabel[1]) {
+					case '-':
+						return -int.Parse(jumpLabel[2..], NumberStyles.HexNumber);
+					case '+':
+						return int.Parse(jumpLabel[2..], NumberStyles.HexNumber);
+					default:
+						return int.Parse(jumpLabel[1..], NumberStyles.HexNumber);
+				}
+			}
+
 			BasicBlock GetBlock(Function function, string label) {
 				if(!blocks.TryGetValue(label, out var block)) {
-					block = new BasicBlock(function);
+					block = new BasicBlock(function, label);
 					blocks[label] = block;
 				}
 				return block;
@@ -326,53 +376,38 @@ namespace Majiro.Script {
 
 			Instruction ParseInstruction(BasicBlock block) {
 
-				ConsumeIf(Address);
-
 				string mnemonic = Consume(Name).Value;
 				var opcode = mnemonic == "phi"
 					? PhiInstruction.PhiOpcode
 					: Opcode.ByMnemonic[mnemonic];
 
-				var instruction = new Instruction(opcode, (uint)currentOffset) {
-					Block = block
-				};
-				currentOffset += 2;
+				var instruction = new Instruction(opcode, block);
 
 				foreach(char operand in opcode.Encoding) {
 					switch(operand) {
 						case 't':
 							instruction.TypeList = ParseTypeList("[", "]");
-							currentOffset += 2;
-							currentOffset += instruction.TypeList.Length;
 							break;
 
 						case 's':
 							if(ct.Value == "%") {
 								ConsumePunctuation("%");
 								ConsumePunctuation("{");
-								string key = Consume(Name).Value;
-								string value = externalizedStrings[key];
-								instruction.String = value;
+								instruction.ExternalKey = Consume(Name).Value;
 								ConsumePunctuation("}");
-								currentOffset += 2;
-								currentOffset += Helpers.ShiftJis.GetByteCount(value) + 1;
 							}
 							else {
 								string value = Consume(StringLiteral).Value[1..^1].Unescape();
 								instruction.String = value;
-								currentOffset += 2;
-								currentOffset += Helpers.ShiftJis.GetByteCount(value) + 1;
 							}
 							break;
 
 						case 'f':
 							instruction.Flags = ParseFlags();
-							currentOffset += 2;
 							break;
 
 						case 'h':
 							instruction.Hash = ParseHash();
-							currentOffset += 4;
 							break;
 
 						case 'o':
@@ -380,57 +415,60 @@ namespace Majiro.Script {
 								instruction.VarOffset = -1;
 								break;
 							}
+
 							instruction.VarOffset = short.Parse(Consume(IntLiteral).Value);
-							currentOffset += 2;
 							break;
 
 						case '0':
-							currentOffset += 4;
 							break;
 
 						case 'i':
-							instruction.IntValue = int.Parse(Consume(IntLiteral).Value);
-							currentOffset += 4;
+							instruction.IntValue = ParseIntLiteral();
 							break;
 
 						case 'r':
 							instruction.FloatValue = float.Parse(Consume(IntLiteral, FloatLiteral).Value, CultureInfo.InvariantCulture);
-							currentOffset += 4;
 							break;
 
 						case 'a':
 							ConsumePunctuation("(");
 							instruction.ArgumentCount = ushort.Parse(Consume(IntLiteral).Value);
 							ConsumePunctuation(")");
-							currentOffset += 2;
 							break;
 
 						case 'j':
 							string jumpLabel = Consume(TokenType.Label).Value[1..];
-							if(jumpLabel.StartsWith('~')) {
-								instruction.JumpOffset = int.Parse(jumpLabel[1..], NumberStyles.HexNumber);
-							}
-							else {
+							if(block != null) {
+								Debug.Assert(!jumpLabel.StartsWith('~'));
 								instruction.JumpTarget = GetBlock(block.Function, jumpLabel);
 							}
-							currentOffset += 4;
+							else {
+								instruction.JumpOffset = ParseRelativeJumpLabel(jumpLabel);
+							}
 							break;
 
 						case 'l':
 							instruction.LineNumber = ushort.Parse(Consume(LineNo).Value[1..]);
-							currentOffset += 2;
 							break;
 
 						case 'c':
-							var switchTargets = new List<BasicBlock>();
-							do {
-								string switchLabel = Consume(TokenType.Label).Value[1..];
-								switchTargets.Add(GetBlock(block.Function, switchLabel));
-							} while(TryConsumePunctuation(out _, ","));
-
-							instruction.SwitchTargets = switchTargets.ToArray();
-							currentOffset += 2;
-							currentOffset += switchTargets.Count * 4;
+							if(block != null) {
+								var switchTargets = new List<BasicBlock>();
+								do {
+									string switchLabel = Consume(TokenType.Label).Value[1..];
+									Debug.Assert(!switchLabel.StartsWith('~'));
+									switchTargets.Add(GetBlock(block.Function, switchLabel));
+								} while(TryConsumePunctuation(out _, ","));
+								instruction.SwitchTargets = switchTargets.ToArray();
+							}
+							else {
+								var switchOffsets = new List<int>();
+								do {
+									string switchLabel = Consume(TokenType.Label).Value[1..];
+									switchOffsets.Add(ParseRelativeJumpLabel(switchLabel));
+								} while(TryConsumePunctuation(out _, ","));
+								instruction.SwitchOffsets = switchOffsets.ToArray();
+							}
 							break;
 
 						case 'p':
@@ -441,7 +479,6 @@ namespace Majiro.Script {
 					}
 				}
 
-				instruction.Size = (uint)(currentOffset - instruction.Offset);
 				return instruction;
 			}
 
@@ -450,7 +487,7 @@ namespace Majiro.Script {
 				string label = Consume(TokenType.Label).Value[..^1];
 				var block = GetBlock(function, label);
 
-				block.FirstInstructionIndex = instructions.Count;
+				block.FirstInstructionIndex = function.Script.Instructions.Count;
 				block.PhiNodes = new List<PhiInstruction>();
 
 				while(ct.Type != TokenType.Label && ct.Value != "}") {
@@ -458,10 +495,10 @@ namespace Majiro.Script {
 					if(instruction is PhiInstruction phi)
 						block.PhiNodes.Add(phi);
 					else
-						instructions.Add(instruction);
+						function.Script.Instructions.Add(instruction);
 				}
 
-				block.LastInstructionIndex = instructions.Count - 1;
+				block.LastInstructionIndex = function.Script.Instructions.Count - 1;
 				return block;
 			}
 
@@ -489,64 +526,86 @@ namespace Majiro.Script {
 
 				var types = ParseTypeList("(", ")");
 
+				var function = new Function(script, hash) {
+					ParameterTypes = types,
+					Blocks = new List<BasicBlock>(),
+					FirstInstructionIndex = script.Instructions.Count
+				};
+
 				if(ct.Type == EntryPoint) {
 					Consume();
-					script.EntryPointOffset = (uint)currentOffset;
+					Debug.Assert(script.EntryPointFunction == null, $"Multiple entry points found ({script.EntryPointFunction?.NameHash:x8} and {hash:x8})");
+					script.EntryPointFunction = function;
 				}
 
 				ConsumePunctuation("{");
 
-				var function = new Function(script, hash) {
-					ParameterTypes = types,
-					BasicBlocks = new List<BasicBlock>(),
-					FirstInstructionIndex = instructions.Count
-				};
-
 				while(ct.Value != "}") {
-					function.BasicBlocks.Add(ParseBlock(function));
+					function.Blocks.Add(ParseBlock(function));
 				}
 
 				ConsumePunctuation("}");
 
-				function.LastInstructionIndex = instructions.Count - 1;
+				function.LastInstructionIndex = script.Instructions.Count - 1;
 				return function;
 			}
 
-			var script = new MjoScript(uint.MaxValue, new List<FunctionEntry>(), instructions) {
-				Functions = new List<Function>(),
-				EnableReadMark = true
-			};
+			MjoScript ParseScript() {
+				var script = new MjoScript {
+					EnableReadMark = true
+				};
 
-			if(TryConsume(out _, ReadMark)) {
-				script.EnableReadMark = Consume(Enable, Disable).Type == Enable;
-			}
-
-			while(ct.Type != EndOfFile) {
-				var function = ParseFunction(script);
-				script.Functions.Add(function);
-				script.Index.Add(new FunctionEntry {
-					NameHash = function.NameHash,
-					Offset = function.StartOffset
-				});
-			}
-
-			foreach(var instruction in instructions) {
-				if(instruction.JumpTarget != null) {
-					instruction.JumpOffset = (int)(instruction.JumpTarget.StartOffset - (instruction.Offset + instruction.Size));
+				if(TryConsume(out _, ReadMark)) {
+					script.EnableReadMark = Consume(Enable, Disable).Type == Enable;
 				}
-				if(instruction.SwitchTargets != null) {
-					uint offset = instruction.Offset + 6;
-					instruction.SwitchCases = new int[instruction.SwitchTargets.Length];
-					for(int i = 0; i < instruction.SwitchTargets.Length; i++) {
-						instruction.SwitchCases[i] = (int)(offset - instruction.SwitchTargets[i].StartOffset);
-						offset += 4;
-					}
+
+				switch(ct.Type) {
+					case Func:
+						script.Representation = MjoScriptRepresentation.ControlFlowGraph;
+						script.Functions = new List<Function>();
+						while(ct.Type != EndOfFile) {
+							var function = ParseFunction(script);
+							script.Functions.Add(function);
+						}
+						break;
+
+					case TokenType.Index:
+						script.Representation = MjoScriptRepresentation.InstructionList;
+						script.FunctionIndex = new List<FunctionIndexEntry>();
+						while(TryConsume(out _, TokenType.Index)) {
+							uint hash = ParseHash();
+							uint offset = (uint)ParseIntLiteral();
+							if(TryConsume(out _, EntryPoint)) {
+								Debug.Assert(script.EntryPointOffset == null, "Multiple entry points found");
+								script.EntryPointOffset = offset;
+							}
+							script.FunctionIndex.Add(new FunctionIndexEntry {
+								NameHash = hash,
+								Offset = offset
+							});
+						}
+
+						while(TryConsume(out var addressToken, Address)) {
+							var instruction = ParseInstruction(null);
+							instruction.Offset = uint.Parse(addressToken.Value[..^1], NumberStyles.HexNumber);
+							// this is valid because externalized strings are not allowed in instruction list mode
+							instruction.Size = GetInstructionSize(instruction);
+							script.Instructions.Add(instruction);
+						}
+						break;
+
+					default:
+						Consume(Func, TokenType.Index);
+						throw new Exception("unreachable");
 				}
+
+				Debug.Assert(ct.Type == EndOfFile);
+
+				script.SanityCheck();
+				return script;
 			}
 
-			Debug.Assert(script.EntryPointOffset != uint.MaxValue);
-
-			return script;
+			return ParseScript();
 		}
 
 		public static Dictionary<string, string> ReadResourceTable(Stream s) {
@@ -557,6 +616,7 @@ namespace Majiro.Script {
 		public static void AssembleScript(MjoScript script, BinaryWriter writer, bool encrypt = true) {
 
 			script.InternalizeStrings();
+			script.ToInstructionList();
 
 			using var ms = new MemoryStream();
 			using var bw = new BinaryWriter(ms, Helpers.ShiftJis, true);
@@ -572,10 +632,10 @@ namespace Majiro.Script {
 				? "MajiroObjX1.000\0"
 				: "MajiroObjV1.000\0"));
 
-			writer.Write(script.EntryPointOffset);
+			writer.Write(script.EntryPointOffset!.Value);
 			writer.Write(script.EnableReadMark ? readMarkCount : 0);
-			writer.Write(script.Index.Count);
-			foreach(var entry in script.Index) {
+			writer.Write(script.FunctionIndex.Count);
+			foreach(var entry in script.FunctionIndex) {
 				writer.Write(entry.NameHash);
 				writer.Write(entry.Offset);
 			}
@@ -586,7 +646,10 @@ namespace Majiro.Script {
 
 		private static void AssembleByteCode(MjoScript script, BinaryWriter writer, out int readMarkCount) {
 			readMarkCount = 0;
+			uint currentOffset = 0;
 			foreach(var instruction in script.Instructions) {
+				Debug.Assert(instruction.Offset == currentOffset);
+				currentOffset += GetInstructionSize(instruction);
 				AssembleInstruction(instruction, writer, ref readMarkCount);
 			}
 		}
@@ -649,7 +712,7 @@ namespace Majiro.Script {
 
 					case 'j':
 						// jump offset
-						writer.Write(instruction.JumpOffset);
+						writer.Write(instruction.JumpOffset!.Value);
 						break;
 
 					case 'l':
@@ -660,8 +723,8 @@ namespace Majiro.Script {
 
 					case 'c':
 						// switch case table
-						writer.Write((ushort)instruction.SwitchCases.Length);
-						foreach(int caseOffset in instruction.SwitchCases) {
+						writer.Write((ushort)instruction.SwitchOffsets.Length);
+						foreach(int caseOffset in instruction.SwitchOffsets) {
 							writer.Write(caseOffset);
 						}
 						break;
@@ -670,6 +733,51 @@ namespace Majiro.Script {
 						throw new Exception("Unrecognized encoding specifier: " + operand);
 				}
 			}
+		}
+
+		public static uint GetInstructionSize(Instruction instruction) {
+			uint size = 2;
+			foreach(char operand in instruction.Opcode.Encoding) {
+				switch(operand) {
+					case 't':
+						size += 2;
+						size += (uint)instruction.TypeList.Length;
+						break;
+
+					case 's':
+						if(instruction.ExternalKey != null)
+							throw new Exception("Unable to determine size of an instruction with an externalized string. Internalize all strings before encoding the script!");
+						Debug.Assert(instruction.String != null);
+						size += 2;
+						size += (uint)Helpers.ShiftJis.GetByteCount(instruction.String) + 1;
+						break;
+
+					case 'f':
+					case 'o':
+					case 'a':
+					case 'l':
+						size += 2;
+						break;
+
+					case 'h':
+					case '0':
+					case 'i':
+					case 'r':
+					case 'j':
+						size += 4;
+						break;
+
+					case 'c':
+						size += 2;
+						size += (uint)(instruction.SwitchOffsets?.Length ?? instruction.SwitchTargets.Length) * 4;
+						break;
+
+					default:
+						throw new Exception("Unknown encoding specifier: " + operand);
+				}
+			}
+
+			return size;
 		}
 	}
 }

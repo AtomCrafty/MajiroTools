@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using Majiro.Script.Analysis.ControlFlow;
+﻿using Majiro.Script.Analysis.ControlFlow;
 
 namespace Majiro.Script.Analysis.StackTransition {
 	public class PhiInstruction : Instruction {
@@ -7,7 +6,7 @@ namespace Majiro.Script.Analysis.StackTransition {
 
 		public readonly int StackBaseOffset;
 
-		public PhiInstruction(BasicBlock block, int stackBaseOffset) : base(PhiOpcode, block.StartOffset) {
+		public PhiInstruction(BasicBlock block, int stackBaseOffset) : base(PhiOpcode, block) {
 			Block = block;
 			StackBaseOffset = stackBaseOffset;
 		}

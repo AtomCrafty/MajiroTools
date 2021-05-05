@@ -22,6 +22,7 @@ namespace MajiroTools.Commands {
 		};
 
 		public override (char shorthand, string name, string fallback, string description)[] Flags => new[] {
+			('c', "cfg", "true", "Whether to perform a control flow analysis pass. This is highly recommended and required if you plan to add or remove instructions."),
 			('e', "externalize", "true", "Whether to externalize message strings. Valid values are \abfalse\a-, \abtrue\a- and \aball\a-. \abtrue\a- only externalizes message strings, while \aball\a- exports all string literals."),
 			('p', "print", "false", "Whether to print the disassembly to the console"),
 			('f', "file", "true", "Whether to print the disassembly to a file"),
@@ -44,14 +45,20 @@ namespace MajiroTools.Commands {
 				script.Project = MjProject.Load(projectPath);
 			}
 
-			ControlFlowPass.Analyze(script);
+			bool cfg = Parameters.GetBool("cfg", 'c', true);
+			bool file = Parameters.GetBool("file", 'f', true);
+			bool print = Parameters.GetBool("print", 'p', false);
+			bool externalize = Parameters.GetBool("externalize", 'e', true);
 
-			if(Parameters.GetBool("print", 'p', false)) {
-				Disassembler.PrintScript(script, IColoredWriter.Console);
-			}
+			if(externalize && !cfg)
+				throw new Exception("\acString externalization can't be used without cfg analysis. Either set \ab--cfg\ac to \abtrue\ac or \ab--externalize\ac to \abfalse\ac!");
 
-			if(Parameters.GetBool("file", 'f', true)) {
-				if(Parameters.GetBool("externalize", 'e', true)) {
+			if(cfg) ControlFlowPass.ToControlFlowGraph(script);
+
+			if(print) Disassembler.PrintScript(script, IColoredWriter.Console);
+
+			if(file) {
+				if(externalize) {
 					script.ExternalizeStrings(Parameters.GetString("externalize", 'e', null) == "all");
 					string resourcePath = Path.ChangeExtension(sourcePath, ".mjres");
 					using var s = File.Open(resourcePath, FileMode.Create);

@@ -1,17 +1,15 @@
-﻿using Majiro.Script.Analysis.ControlFlow;
+﻿using System.Diagnostics;
+using Majiro.Script.Analysis.ControlFlow;
 using Majiro.Script.Analysis.StackTransition;
 using VToolBase.Core;
 
 namespace Majiro.Script {
 	public class Instruction {
+		// shared info
 		public readonly Opcode Opcode;
-		public uint Offset;
-		public uint Size;
-
 		public MjoFlags Flags;
 		public uint Hash;
 		public short VarOffset;
-		public int JumpOffset;
 		public MjoType[] TypeList;
 		public string String;
 		public string ExternalKey;
@@ -19,11 +17,19 @@ namespace Majiro.Script {
 		public float FloatValue;
 		public ushort ArgumentCount;
 		public ushort LineNumber;
-		public int[] SwitchCases;
 
+		// InstructionList representation
+		public uint? Offset;
+		public uint? Size;
+		public int? JumpOffset;
+		public int[] SwitchOffsets;
+
+		// ControlFlowGraph representation
 		public BasicBlock Block;
 		public BasicBlock JumpTarget;
 		public BasicBlock[] SwitchTargets;
+		public Function Function => Block?.Function;
+		public MjoScript Script => Function?.Script;
 		public StackState StackState;
 
 		public bool IsJump => Opcode.IsJump;
@@ -42,6 +48,36 @@ namespace Majiro.Script {
 		public Instruction(Opcode opcode, uint offset) {
 			Opcode = opcode;
 			Offset = offset;
+		}
+
+		public Instruction(Opcode opcode, BasicBlock block) {
+			Opcode = opcode;
+			Block = block;
+		}
+
+		public void SanityCheck(MjoScriptRepresentation representation) {
+			Debug.Assert(Opcode != null);
+			switch(representation) {
+				case MjoScriptRepresentation.InstructionList:
+					Debug.Assert(Block == null);
+					Debug.Assert(JumpTarget == null);
+					Debug.Assert(SwitchTargets == null);
+					Debug.Assert(StackState == null);
+					Debug.Assert(Offset != null);
+					Debug.Assert(Size != null && Size != 0);
+					Debug.Assert(IsJump ^ JumpOffset == null);
+					Debug.Assert(IsSwitch ^ SwitchOffsets == null);
+					break;
+				case MjoScriptRepresentation.ControlFlowGraph:
+					Debug.Assert(Offset == null);
+					Debug.Assert(Size == null && Size != 0);
+					Debug.Assert(JumpOffset == null);
+					Debug.Assert(SwitchOffsets == null);
+					Debug.Assert(Block != null);
+					Debug.Assert(IsJump ^ JumpTarget == null);
+					Debug.Assert(IsSwitch ^ SwitchTargets == null);
+					break;
+			}
 		}
 
 		public override string ToString() => Disassembler.DumpInstruction(this);

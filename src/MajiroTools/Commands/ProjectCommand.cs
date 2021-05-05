@@ -45,7 +45,7 @@ namespace MajiroTools.Commands {
 					using var reader = File.OpenRead(file).NewReader();
 					var script = Disassembler.DisassembleScript(reader);
 
-					ControlFlowPass.Analyze(script);
+					ControlFlowPass.ToControlFlowGraph(script);
 					//StackTransitionPass.Analyze(script);
 
 					var functions = new List<MjFunction>();

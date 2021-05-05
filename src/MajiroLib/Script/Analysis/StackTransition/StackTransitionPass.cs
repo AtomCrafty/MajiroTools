@@ -63,7 +63,7 @@ namespace Majiro.Script.Analysis.StackTransition {
 
 		public static void Analyze(Function function) {
 			//Disassembler.PrintFunctionHeader(function, IColoredWriter.Console);
-			var blocks = function.BasicBlocks.ToList();
+			var blocks = function.Blocks.ToList();
 			blocks.PreOrderSort(block => block.Successors);
 
 			foreach(var block in blocks) {

@@ -34,17 +34,16 @@ namespace MajiroTools.Commands {
 			string sourcePath = Arguments[0];
 			string targetPath = Path.ChangeExtension(sourcePath, ".mjo");
 
-			Dictionary<string, string> externalStrings = null;
+			using var reader = File.OpenText(sourcePath);
+			var script = Assembler.Parse(reader);
+
 			if(Parameters.GetBool("externalized", 'e', true)) {
 				string resourcePath = Path.ChangeExtension(sourcePath, ".mjres");
 				if(File.Exists(resourcePath)) {
 					using var s = File.OpenRead(resourcePath);
-					externalStrings = Assembler.ReadResourceTable(s);
+					script.ExternalizedStrings = Assembler.ReadResourceTable(s);
 				}
 			}
-
-			using var reader = File.OpenText(sourcePath);
-			var script = Assembler.Parse(reader, externalStrings);
 
 			using var writer = File.Open(targetPath, FileMode.Create).NewWriter();
 			Assembler.AssembleScript(script, writer);
