@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Majiro.Script.Analysis.StackTransition;
 
@@ -26,8 +27,8 @@ namespace Majiro.Script.Analysis.ControlFlow {
 		public Instruction LastInstruction => Function.Script.Instructions[LastInstructionIndex];
 
 		public List<PhiInstruction> PhiNodes;
-		public StackState StartState;
-		public StackState EndState;
+		public StackValue[] StartState;
+		public StackValue[] EndState;
 
 		public IEnumerable<Instruction> Instructions => Enumerable
 			.Range(FirstInstructionIndex, InstructionCount)
@@ -43,5 +44,23 @@ namespace Majiro.Script.Analysis.ControlFlow {
 		}
 
 		public override string ToString() => Name;
+
+		public void SanityCheck(MjoScriptRepresentation representation) {
+			switch(representation) {
+				case MjoScriptRepresentation.InstructionList:
+					Debug.Fail("Blocks shouldn't exist in instruction list representation");
+					break;
+				case MjoScriptRepresentation.ControlFlowGraph:
+					Debug.Assert(StartState == null);
+					Debug.Assert(EndState == null);
+					Debug.Assert(PhiNodes == null);
+					break;
+				case MjoScriptRepresentation.SsaGraph:
+					Debug.Assert(StartState != null);
+					Debug.Assert(EndState != null);
+					Debug.Assert(PhiNodes != null);
+					break;
+			}
+		}
 	}
 }

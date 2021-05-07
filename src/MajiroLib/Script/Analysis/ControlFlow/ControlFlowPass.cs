@@ -138,6 +138,10 @@ namespace Majiro.Script.Analysis.ControlFlow {
 					Debug.Assert(function.ParameterTypes == null);
 					function.ParameterTypes = instruction.TypeList;
 				}
+				else if(instruction.IsAlloca) {
+					Debug.Assert(function.LocalTypes == null);
+					function.LocalTypes = instruction.TypeList;
+				}
 			}
 
 			// find basic block ends
@@ -243,7 +247,6 @@ namespace Majiro.Script.Analysis.ControlFlow {
 				instruction.Offset = offset;
 				instruction.Size = size;
 				instruction.Block = null;
-				instruction.StackState = null;
 				offset += size;
 			}
 

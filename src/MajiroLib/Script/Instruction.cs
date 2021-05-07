@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Linq;
 using Majiro.Script.Analysis.ControlFlow;
 using Majiro.Script.Analysis.StackTransition;
 using VToolBase.Core;
@@ -30,7 +31,11 @@ namespace Majiro.Script {
 		public BasicBlock[] SwitchTargets;
 		public Function Function => Block?.Function;
 		public MjoScript Script => Function?.Script;
-		public StackState StackState;
+
+		// SsaGraph representations
+		public StackValue[] BeforeValues;
+		public StackValue[] PoppedValues;
+		public StackValue[] PushedValues;
 
 		public bool IsJump => Opcode.IsJump;
 		public bool IsUnconditionalJump => Opcode.Value == 0x82C;
@@ -62,7 +67,9 @@ namespace Majiro.Script {
 					Debug.Assert(Block == null);
 					Debug.Assert(JumpTarget == null);
 					Debug.Assert(SwitchTargets == null);
-					Debug.Assert(StackState == null);
+					Debug.Assert(BeforeValues == null);
+					Debug.Assert(PoppedValues == null);
+					Debug.Assert(PushedValues == null);
 					Debug.Assert(Offset != null);
 					Debug.Assert(Size != null && Size != 0);
 					Debug.Assert(IsJump ^ JumpOffset == null);
@@ -73,6 +80,22 @@ namespace Majiro.Script {
 					Debug.Assert(Size == null && Size != 0);
 					Debug.Assert(JumpOffset == null);
 					Debug.Assert(SwitchOffsets == null);
+					Debug.Assert(BeforeValues == null);
+					Debug.Assert(PoppedValues == null);
+					Debug.Assert(PushedValues == null);
+					Debug.Assert(Block != null);
+					Debug.Assert(IsJump ^ JumpTarget == null);
+					Debug.Assert(IsSwitch ^ SwitchTargets == null);
+					break;
+				case MjoScriptRepresentation.SsaGraph:
+					Debug.Assert(Offset == null);
+					Debug.Assert(Size == null && Size != 0);
+					Debug.Assert(JumpOffset == null);
+					Debug.Assert(SwitchOffsets == null);
+					Debug.Assert(BeforeValues != null);
+					Debug.Assert(PoppedValues != null);
+					Debug.Assert(PushedValues != null);
+					Debug.Assert(PushedValues.All(val => val.Producer == this));
 					Debug.Assert(Block != null);
 					Debug.Assert(IsJump ^ JumpTarget == null);
 					Debug.Assert(IsSwitch ^ SwitchTargets == null);

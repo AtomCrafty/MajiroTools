@@ -502,15 +502,12 @@ namespace Majiro.Script {
 			writer.Write("readmark ");
 			writer.ForegroundColor = script.EnableReadMark ? ConsoleColor.Green : ConsoleColor.Red;
 			writer.WriteLine(script.EnableReadMark ? "enable" : "disable");
-			//writer.ForegroundColor = ConsoleColor.DarkYellow;
-			//writer.Write("entrypoint ");
-			//writer.ForegroundColor = ConsoleColor.Blue;
-			//writer.WriteLine($"${script.EntryPointFunction.NameHash:x8}");
 			writer.ResetColor();
 			writer.WriteLine();
 
 			switch(script.Representation) {
 				case MjoScriptRepresentation.ControlFlowGraph:
+				case MjoScriptRepresentation.SsaGraph:
 					bool first = true;
 					foreach(var function in script.Functions) {
 						if(!first)

@@ -223,7 +223,7 @@ namespace Majiro.Script {
 				
 				DefineOpcode(0x836, "argcheck", null, "t", ".[#t]", "sigchk");
 				
-				DefineOpcode(0x837, "ldelem", null, "fho", "[i#d].~#t");
+				DefineOpcode(0x837, "ldelem", null, "fho", "[i#d].#t");
 
 				DefineOpcode(0x83a, "line", null, "l", ".");
 				

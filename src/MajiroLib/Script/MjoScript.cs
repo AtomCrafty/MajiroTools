@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Majiro.Project;
@@ -9,6 +8,7 @@ namespace Majiro.Script {
 	public enum MjoScriptRepresentation {
 		InstructionList,
 		ControlFlowGraph,
+		SsaGraph,
 
 		InTransition
 	}
@@ -36,15 +36,23 @@ namespace Majiro.Script {
 		public Function EntryPointFunction;
 
 		public void SanityCheck() {
-			Debug.Assert(Instructions != null);
 			switch(Representation) {
 				case MjoScriptRepresentation.InstructionList:
+					Debug.Assert(Instructions != null);
 					Debug.Assert(FunctionIndex != null);
 					Debug.Assert(EntryPointOffset != null);
 					Debug.Assert(Functions == null);
 					Debug.Assert(EntryPointFunction == null);
 					break;
 				case MjoScriptRepresentation.ControlFlowGraph:
+					Debug.Assert(Instructions != null);
+					Debug.Assert(FunctionIndex == null);
+					Debug.Assert(EntryPointOffset == null);
+					Debug.Assert(Functions != null);
+					Debug.Assert(EntryPointFunction != null);
+					break;
+				case MjoScriptRepresentation.SsaGraph:
+					Debug.Assert(Instructions != null);
 					Debug.Assert(FunctionIndex == null);
 					Debug.Assert(EntryPointOffset == null);
 					Debug.Assert(Functions != null);
@@ -52,8 +60,16 @@ namespace Majiro.Script {
 					break;
 			}
 
-			foreach(var instruction in Instructions) {
-				instruction.SanityCheck(Representation);
+			if(Functions != null) {
+				foreach(var function in Functions) {
+					function.SanityCheck(Representation);
+				}
+			}
+
+			if(Instructions != null) {
+				foreach(var instruction in Instructions) {
+					instruction.SanityCheck(Representation);
+				}
 			}
 		}
 

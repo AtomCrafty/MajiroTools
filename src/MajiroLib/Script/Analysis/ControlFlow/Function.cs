@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Majiro.Script.Analysis.ControlFlow {
@@ -18,6 +19,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 		public List<BasicBlock> Blocks;
 
 		public MjoType[] ParameterTypes;
+		public MjoType[] LocalTypes;
 
 		public uint? StartOffset => Script.Instructions[FirstInstructionIndex].Offset;
 		public bool IsEntryPoint => this == Script.EntryPointFunction;
@@ -34,6 +36,26 @@ namespace Majiro.Script.Analysis.ControlFlow {
 		public BasicBlock BasicBlockFromOffset(uint offset) {
 			return Blocks.Find(block => Script.Instructions[block.FirstInstructionIndex].Offset == offset)
 				?? throw new Exception("No block found at offset " + offset);
+		}
+
+		public void SanityCheck(MjoScriptRepresentation representation) {
+			switch(representation) {
+				case MjoScriptRepresentation.InstructionList:
+					Debug.Fail("Functions shouldn't exist in instruction list representation");
+					break;
+				case MjoScriptRepresentation.ControlFlowGraph:
+					Debug.Assert(ParameterTypes != null);
+					Debug.Assert(LocalTypes != null);
+					break;
+				case MjoScriptRepresentation.SsaGraph:
+					Debug.Assert(ParameterTypes != null);
+					Debug.Assert(LocalTypes != null);
+					break;
+			}
+
+			foreach(var block in Blocks) {
+				block.SanityCheck(representation);
+			}
 		}
 	}
 }
