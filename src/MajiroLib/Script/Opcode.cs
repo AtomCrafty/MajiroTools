@@ -114,7 +114,7 @@ namespace Majiro.Script {
 				DefineBinaryOperator(0x108, "div",  "/",  MjoTypeMask.Numeric, false);
 				DefineBinaryOperator(0x110, "rem",  "%",  MjoTypeMask.Int, false, "mod");
 				DefineBinaryOperator(0x118, "add",  "+",  MjoTypeMask.Primitive, false);
-				DefineBinaryOperator(0x120, "sub",  "-",  MjoTypeMask.Primitive, false);
+				DefineBinaryOperator(0x120, "sub",  "-",  MjoTypeMask.Numeric, false);
 				DefineBinaryOperator(0x128, "shr",  ">>", MjoTypeMask.Int, false);
 				DefineBinaryOperator(0x130, "shl",  "<<", MjoTypeMask.Int, false);
 				DefineBinaryOperator(0x138, "cle",  "<=", MjoTypeMask.Primitive, true);
