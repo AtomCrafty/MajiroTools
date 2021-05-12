@@ -92,7 +92,8 @@ namespace Majiro.Script {
 						// string data
 						ushort size = reader.ReadUInt16();
 						var bytes = reader.ReadBytes(size - 1);
-						Debug.Assert(reader.ReadByte() == 0);
+						byte nullTerminator = reader.ReadByte();
+						Debug.Assert(nullTerminator == 0);
 						instruction.String = Helpers.ShiftJis.GetString(bytes);
 						break;
 
@@ -113,7 +114,8 @@ namespace Majiro.Script {
 
 					case '0':
 						// 4 byte address placeholder
-						Debug.Assert(reader.ReadInt32() == 0);
+						uint addressPlaceholder = reader.ReadUInt32();
+						Debug.Assert(addressPlaceholder == 0);
 						break;
 
 					case 'i':

@@ -26,12 +26,12 @@ namespace Majiro.Project {
 		}
 
 		public void Save(string path) {
-			var writer = File.Open(path, FileMode.Create).NewTextWriter();
+			using var writer = File.Open(path, FileMode.Create).NewTextWriter();
 			new JsonSerializer { Formatting = Formatting.Indented }.Serialize(writer, this);
 		}
 
 		public static MjProject Load(string path) {
-			var reader = File.OpenText(path);
+			using var reader = File.OpenText(path);
 			return new JsonSerializer().Deserialize<MjProject>(new JsonTextReader(reader));
 		}
 	}
