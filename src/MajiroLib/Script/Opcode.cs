@@ -131,8 +131,8 @@ namespace Majiro.Script {
 			}
 
 			{	// unary operators / nops
-				DefineOpcode(0x190, "notl",  "!", "", "i.i");
-				DefineOpcode(0x198, "not",   "~", "", "i.i");
+				DefineOpcode(0x190, "notl",  "!", "", "i.i", "notl.i");
+				DefineOpcode(0x198, "not",   "~", "", "i.i", "not.i");
 				DefineOpcode(0x1a0, "neg.i", "-", "", "i.i");
 				DefineOpcode(0x1a1, "neg.r", "-", "", "f.f");
 				
@@ -168,7 +168,7 @@ namespace Majiro.Script {
 			}
 
 			{	// array assignment operators
-				DefineArrayAssignmentOperator(0x270, "stelem",     "=",   MjoTypeMask.All, false);
+				DefineArrayAssignmentOperator(0x270, "stelem",     "=",   MjoTypeMask.Primitive, false);
 				DefineArrayAssignmentOperator(0x278, "stelem.mul", "*=",  MjoTypeMask.Numeric, false);
 				DefineArrayAssignmentOperator(0x280, "stelem.div", "/=",  MjoTypeMask.Numeric, false);
 				DefineArrayAssignmentOperator(0x288, "stelem.rem", "%=", MjoTypeMask.Int, false, "stelem.mod");
@@ -180,7 +180,7 @@ namespace Majiro.Script {
 				DefineArrayAssignmentOperator(0x2b8, "stelem.xor", "^=",  MjoTypeMask.Int, false);
 				DefineArrayAssignmentOperator(0x2c0, "stelem.or",  "|=",  MjoTypeMask.Int, false);
 				
-				DefineArrayAssignmentOperator(0x2d0, "stelemp",     "=",   MjoTypeMask.All, true);
+				DefineArrayAssignmentOperator(0x2d0, "stelemp",     "=",   MjoTypeMask.Primitive, true);
 				DefineArrayAssignmentOperator(0x2d8, "stelemp.mul", "*=",  MjoTypeMask.Numeric, true);
 				DefineArrayAssignmentOperator(0x2e0, "stelemp.div", "/=",  MjoTypeMask.Numeric, true);
 				DefineArrayAssignmentOperator(0x2e8, "stelemp.rem", "%=",  MjoTypeMask.Int, true, "stelemp.mod");
@@ -195,7 +195,7 @@ namespace Majiro.Script {
 
 			{	// 0800 range opcodes
 				DefineOpcode(0x800, "ldc.i", null, "i", ".i");
-				DefineOpcode(0x801, "ldstr", null, "s", ".s", "ld.s");
+				DefineOpcode(0x801, "ldstr", null, "s", ".s", "ldc.s");
 				DefineOpcode(0x802, "ld", null, "fho", ".#t", "ldvar");
 				DefineOpcode(0x803, "ldc.r", null, "r", ".f");
 
@@ -206,17 +206,17 @@ namespace Majiro.Script {
 				DefineOpcode(0x82b, "ret", null, "", "[*].", "return");
 
 				DefineOpcode(0x82c, "br", null, "j", ".", "jmp");
-				DefineOpcode(0x82d, "brtrue", null, "j", "p.", "jnz", "jne");
+				DefineOpcode(0x82d, "brtrue", null, "j", "p.", "brinst", "jnz", "jne");
 				DefineOpcode(0x82e, "brfalse", null, "j", "p.", "brnull", "brzero", "jz", "je");
 
 				DefineOpcode(0x82f, "pop", null, "", "*.");
 				
-				DefineOpcode(0x830, "br.v", null, "j", "p.", "jmp.v");
-				DefineOpcode(0x831, "bne.v", null, "j", "p.", "jne.v");
-				DefineOpcode(0x832, "bgt.v", null, "j", "p.", "jgt.v");
-				DefineOpcode(0x833, "bge.v", null, "j", "p.", "jge.v");
-				DefineOpcode(0x838, "ble.v", null, "j", "p.", "jle.v");
-				DefineOpcode(0x839, "blt.v", null, "j", "p.", "jlt.v");
+				DefineOpcode(0x830, "br.case", null, "j", "p.", "br.v", "jmp.v");
+				DefineOpcode(0x831, "bne.case", null, "j", "p.", "bne.v", "jne.v");
+				DefineOpcode(0x832, "bge.case", null, "j", "p.", "bge.v", "jge.v");
+				DefineOpcode(0x833, "ble.case", null, "j", "p.", "ble.v", "jle.v");
+				DefineOpcode(0x838, "blt.case", null, "j", "p.", "blt.v", "jlt.v");
+				DefineOpcode(0x839, "bgt.case", null, "j", "p.", "bgt.v", "jgt.v");
 				
 				DefineOpcode(0x834, "syscall",  null, "ha", "[*#a].*");
 				DefineOpcode(0x835, "syscallp", null, "ha", "[*#a].");
