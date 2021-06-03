@@ -14,6 +14,8 @@ using VToolBase.Core;
 namespace Majiro.Script {
 	public static class Disassembler {
 
+		private const string Indent = " ";
+
 		public static MjoScript DisassembleScript(BinaryReader reader) {
 			string signature = reader.ReadSizedString(16);
 			bool isEncrypted = signature == "MajiroObjX1.000\0";
@@ -37,6 +39,7 @@ namespace Majiro.Script {
 
 			var script = new MjoScript {
 				Representation = MjoScriptRepresentation.InstructionList,
+				Instructions = new List<Instruction>(),
 				EntryPointOffset = entryPointOffset,
 				FunctionIndex = functionIndex,
 				EnableReadMark = readMarkSize != 0
@@ -318,14 +321,23 @@ namespace Majiro.Script {
 
 					case 'h':
 						// name hash
-						if(instruction.IsSysCall)
-							writer.ForegroundColor = ConsoleColor.Yellow;
-						else if(instruction.IsCall)
-							writer.ForegroundColor = ConsoleColor.Blue;
-						else
-							writer.ForegroundColor = ConsoleColor.Red;
 						writer.Write('$');
-						writer.Write(instruction.Hash.ToString("x8"));
+						if(instruction.IsSysCall) {
+							writer.ForegroundColor = ConsoleColor.Yellow;
+							writer.Write(Data.KnownSyscallNamesByHash.TryGetValue(instruction.Hash, out string name)
+								? name
+								: instruction.Hash.ToString("x8"));
+						}
+						else if(instruction.IsCall) {
+							writer.ForegroundColor = ConsoleColor.Blue;
+							writer.Write(Data.KnownFunctionNamesByHash.TryGetValue(instruction.Hash, out string name)
+								? name
+								: instruction.Hash.ToString("x8"));
+						}
+						else {
+							writer.ForegroundColor = ConsoleColor.Red;
+							writer.Write(instruction.Hash.ToString("x8"));
+						}
 						writer.ResetColor();
 						break;
 
@@ -424,36 +436,41 @@ namespace Majiro.Script {
 				}
 			}
 
-			if(instruction.IsSysCall && Data.KnownSyscallNamesByHash.TryGetValue(instruction.Hash, out string name)) {
-				writer.ForegroundColor = ConsoleColor.DarkGray;
-				writer.Write(" ; $");
-				writer.Write(name);
-				writer.ResetColor();
-			}
-			else if(instruction.IsCall) {
-				var project = instruction.Script?.Project;
-				uint hash = instruction.Hash;
-				if(project != null && project.TryGetFunctionName(hash, out string calleeName)
-				   || Data.KnownFunctionNamesByHash.TryGetValue(hash, out calleeName)) {
+			{
+				/*
+				if(instruction.IsSysCall && Data.KnownSyscallNamesByHash.TryGetValue(instruction.Hash, out string name)) {
 					writer.ForegroundColor = ConsoleColor.DarkGray;
-					writer.Write(" ; ");
-					writer.Write(calleeName);
+					writer.Write(" ; $");
+					writer.Write(name);
 					writer.ResetColor();
 				}
-				else if(project != null && project.FunctionMap.TryGetValue(hash, out var functions) && functions.Any()) {
-					writer.ForegroundColor = ConsoleColor.DarkGray;
-					writer.Write(" ; declared in ");
-					writer.Write(functions[0].DeclaringScript);
-					writer.ResetColor();
+				else
+				//*/
+				if(instruction.IsCall) {
+					var project = instruction.Script?.Project;
+					uint hash = instruction.Hash;
+					if(project != null && project.TryGetFunctionName(hash, out string calleeName)
+					   || Data.KnownFunctionNamesByHash.TryGetValue(hash, out calleeName)) {
+						writer.ForegroundColor = ConsoleColor.DarkGray;
+						writer.Write(" ; ");
+						writer.Write(calleeName);
+						writer.ResetColor();
+					}
+					else if(project != null && project.FunctionMap.TryGetValue(hash, out var functions) && functions.Any()) {
+						writer.ForegroundColor = ConsoleColor.DarkGray;
+						writer.Write(" ; declared in ");
+						writer.Write(functions[0].DeclaringScript);
+						writer.ResetColor();
+					}
 				}
-			}
-			else if(instruction.IsLoad || instruction.IsStore) {
-				uint hash = instruction.Hash;
-				if(Data.KnownVariableNamesByHash.TryGetValue(hash, out string varName)) {
-					writer.ForegroundColor = ConsoleColor.DarkGray;
-					writer.Write(" ; ");
-					writer.Write(varName);
-					writer.ResetColor();
+				else if(instruction.IsLoad || instruction.IsStore) {
+					uint hash = instruction.Hash;
+					if(Data.KnownVariableNamesByHash.TryGetValue(hash, out string varName)) {
+						writer.ForegroundColor = ConsoleColor.DarkGray;
+						writer.Write(" ; ");
+						writer.Write(varName);
+						writer.ResetColor();
+					}
 				}
 			}
 
@@ -467,9 +484,6 @@ namespace Majiro.Script {
 				writer.Write($"@~+{offset:x4}");
 			else writer.Write("@~0");
 		}
-
-
-		private const string Indent = " ";
 
 		public static void PrintBasicBlock(BasicBlock block, IColoredWriter writer) {
 			writer.Write(Indent);

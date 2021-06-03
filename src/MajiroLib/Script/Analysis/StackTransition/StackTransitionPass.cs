@@ -7,6 +7,7 @@ using Majiro.Util;
 
 namespace Majiro.Script.Analysis.StackTransition {
 	public static class StackTransitionPass {
+		public static bool Verbose = false;
 
 		public static void WriteStackState(Function function, Instruction instruction, bool parameters = true,
 			bool locals = true, bool temps = true) {
@@ -153,18 +154,21 @@ namespace Majiro.Script.Analysis.StackTransition {
 		}
 
 		private static void ToSsaGraph(Function function) {
-			Disassembler.PrintFunctionHeader(function, IColoredWriter.Console);
+			if(Verbose) Disassembler.PrintFunctionHeader(function, IColoredWriter.Console);
+
 			var blocks = function.Blocks.ToList();
 			blocks.PreOrderSort(block => block.Successors);
 
 			foreach(var block in blocks) {
-				Disassembler.PrintLabel(block, IColoredWriter.Console);
+				if(Verbose) Disassembler.PrintLabel(block, IColoredWriter.Console);
 
 				var state = InitStartState(block).ToList();
 
-				Console.ForegroundColor = ConsoleColor.DarkGray;
-				Console.WriteLine("; predecessors: " + string.Join(", ", block.Predecessors.Select(p =>
-					$"{p.Name} (end stack size {p.EndState?.Length.ToString() ?? "unknown"})")));
+				if(Verbose) {
+					Console.ForegroundColor = ConsoleColor.DarkGray;
+					Console.WriteLine("; predecessors: " + string.Join(", ", block.Predecessors.Select(p =>
+						$"{p.Name} (end stack size {p.EndState?.Length.ToString() ?? "unknown"})")));
+				}
 
 				foreach(var phi in block.PhiNodes) {
 					WriteStackState(function, phi, false, false);
@@ -179,18 +183,22 @@ namespace Majiro.Script.Analysis.StackTransition {
 
 					SimulateTransition(state, instruction);
 
-					WriteStackState(function, instruction, false, false);
-					Console.CursorLeft = 40;//74;
-					Disassembler.PrintInstruction(instruction, IColoredWriter.Console);
+					if(Verbose) {
+						WriteStackState(function, instruction, false, false);
+						Console.CursorLeft = 40; //74;
+						Disassembler.PrintInstruction(instruction, IColoredWriter.Console);
+					}
 				}
 
 				block.EndState = state.ToArray();
 				CheckStateCompatibility(block.Successors.Select(pre => pre.StartState).Prepend(block.EndState));
 
-				Console.ForegroundColor = ConsoleColor.DarkGray;
-				Console.WriteLine("; successors: " + string.Join(", ", block.Successors.Select(s =>
-					$"{s.Name} (start stack size {s.StartState?.Length.ToString() ?? "unknown"})")));
-				Console.WriteLine();
+				if(Verbose) {
+					Console.ForegroundColor = ConsoleColor.DarkGray;
+					Console.WriteLine("; successors: " + string.Join(", ", block.Successors.Select(s =>
+						$"{s.Name} (start stack size {s.StartState?.Length.ToString() ?? "unknown"})")));
+					Console.WriteLine();
+				}
 			}
 		}
 
@@ -288,6 +296,8 @@ namespace Majiro.Script.Analysis.StackTransition {
 										list.Add(MjoTypeMask.Int);
 										list.Add(MjoTypeMask.Int);
 										list.Add(MjoTypeMask.Int);
+										break;
+									case "w":
 										break;
 									default:
 										throw new Exception("Unrecognized control code: " + instruction.String);

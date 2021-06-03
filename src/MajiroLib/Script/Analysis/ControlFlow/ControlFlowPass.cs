@@ -18,7 +18,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 
 			script.Representation = MjoScriptRepresentation.InTransition;
 
-			var functionStarts = new HashSet<int>();
+			var functionStarts = new Dictionary<int, Function>();
 			var functions = new List<Function>();
 			script.Functions = functions;
 
@@ -28,41 +28,39 @@ namespace Majiro.Script.Analysis.ControlFlow {
 				int index = script.InstructionIndexFromOffset(offset);
 				if(index < 0) throw new Exception($"No instruction found at offset 0x{offset:x8}");
 
-				var function = new Function(script, functionEntry.NameHash) {
-					FirstInstructionIndex = index
-				};
+				var function = new Function(script, functionEntry.NameHash);
 
 				if(functionEntry.Offset == script.EntryPointOffset)
 					script.EntryPointFunction = function;
 
 				functions.Add(function);
-				functionStarts.Add(index);
+				functionStarts.Add(index, function);
 			}
 
 			// find function ends
-			foreach(var function in functions) {
-				for(int i = function.FirstInstructionIndex; i < script.Instructions.Count; i++) {
-					if(i + 1 == script.Instructions.Count || functionStarts.Contains(i + 1)) {
-						function.LastInstructionIndex = i;
+			foreach((int firstInstructionIndex, var function) in functionStarts) {
+				int lastInstructionIndex = -1;
+				for(int i = firstInstructionIndex; i < script.Instructions.Count; i++) {
+					if(i + 1 == script.Instructions.Count || functionStarts.ContainsKey(i + 1)) {
+						lastInstructionIndex = i;
 						break;
 					}
 				}
 
-				if(function.LastInstructionIndex == -1)
+				if(lastInstructionIndex == -1)
 					throw new Exception("Unable to find last instruction");
-			}
 
-			foreach(var function in functions) {
-				AnalyzeFunction(function);
+				AnalyzeFunction(function, firstInstructionIndex, lastInstructionIndex);
 			}
-
-			script.EntryPointOffset = null;
-			script.FunctionIndex = null;
 
 			foreach(var instruction in script.Instructions) {
 				instruction.Offset = null;
 				instruction.Size = null;
 			}
+
+			script.EntryPointOffset = null;
+			script.FunctionIndex = null;
+			script.Instructions = null;
 
 			script.Representation = MjoScriptRepresentation.ControlFlowGraph;
 			script.SanityCheck();
@@ -95,35 +93,35 @@ namespace Majiro.Script.Analysis.ControlFlow {
 			yield return instruction.Offset!.Value + instruction.Size!.Value;
 		}
 
-		private static void AnalyzeFunction(Function function) {
+		private static void AnalyzeFunction(Function function, int firstInstructionIndex, int lastInstructionIndex) {
 			var script = function.Script;
 			var instructions = script.Instructions;
 
 			var entryBlock = new BasicBlock(function, "entry") {
-				FirstInstructionIndex = function.FirstInstructionIndex,
 				IsEntryBlock = true
 			};
 			function.EntryBlock = entryBlock;
 			function.ExitBlocks = new List<BasicBlock>();
 
-			var startIndices = new HashSet<int> { function.FirstInstructionIndex };
+			var blockStarts = new Dictionary<int, BasicBlock> { { firstInstructionIndex, entryBlock } };
 			var basicBlocks = new List<BasicBlock> { entryBlock };
+			function.Blocks = basicBlocks;
 
 			void MarkBasicBlockStart(uint offset) {
 				int index = script.InstructionIndexFromOffset(offset);
 				if(index == -1)
 					throw new Exception("Unable to determine jump target");
 
-				if(startIndices.Add(index)) {
+				if(!blockStarts.ContainsKey(index)) {
 					string label = $"block_{offset:x4}";
-					basicBlocks.Add(new BasicBlock(function, label) {
-						FirstInstructionIndex = index
-					});
+					var block = new BasicBlock(function, label);
+					basicBlocks.Add(block);
+					blockStarts.Add(index, block);
 				}
 			}
 
 			// mark basic block boundaries
-			for(int i = function.FirstInstructionIndex; i <= function.LastInstructionIndex; i++) {
+			for(int i = firstInstructionIndex; i <= lastInstructionIndex; i++) {
 				var instruction = instructions[i];
 
 				if(instruction.IsJump || instruction.IsSwitch) {
@@ -131,7 +129,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 						MarkBasicBlockStart(offset);
 					}
 					// instruction after a jump is always a new basic block
-					if(i != function.LastInstructionIndex)
+					if(i != lastInstructionIndex)
 						MarkBasicBlockStart(instruction.Offset!.Value + instruction.Size!.Value);
 				}
 				else if(instruction.IsArgCheck) {
@@ -145,21 +143,18 @@ namespace Majiro.Script.Analysis.ControlFlow {
 			}
 
 			// find basic block ends
-			foreach(var basicBlock in basicBlocks) {
-				for(int i = basicBlock.FirstInstructionIndex; i <= function.LastInstructionIndex; i++) {
+			foreach(int startIndex in blockStarts.Keys.OrderBy(i => i)) {
+				var basicBlock = blockStarts[startIndex];
+				for(int i = startIndex; i <= lastInstructionIndex; i++) {
 					instructions[i].Block = basicBlock;
-					if(i == function.LastInstructionIndex || startIndices.Contains(i + 1)) {
-						basicBlock.LastInstructionIndex = i;
+					basicBlock.Instructions.Add(instructions[i]);
+					if(i == lastInstructionIndex || blockStarts.ContainsKey(i + 1)) {
 						break;
 					}
 				}
-
-				if(basicBlock.LastInstructionIndex == -1)
-					throw new Exception("Unable to find last instruction");
 			}
 
-			basicBlocks.Sort((a, b) => a.FirstInstructionIndex - b.FirstInstructionIndex);
-			function.Blocks = basicBlocks;
+			basicBlocks.Sort((a, b) => (int)a.FirstInstruction.Offset!.Value - (int)b.FirstInstruction.Offset!.Value);
 
 			// link consecutive blocks
 			for(int i = 0; i < basicBlocks.Count - 1; i++) {
@@ -167,11 +162,13 @@ namespace Majiro.Script.Analysis.ControlFlow {
 				if(block.IsUnreachable) continue;
 				if(block.IsExitBlock) continue;
 
-				var lastInstruction = instructions[block.LastInstructionIndex];
+				var lastInstruction = block.LastInstruction;
 				if(lastInstruction.IsUnconditionalJump) continue;
 				if(lastInstruction.IsSwitch) continue;
 
 				var nextBlock = basicBlocks[i + 1];
+				if(block.Successors.Contains(nextBlock))
+					continue;
 				block.Successors.Add(nextBlock);
 				nextBlock.Predecessors.Add(block);
 			}
@@ -193,10 +190,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 
 		private static void AnalyzeBasicBlock(BasicBlock basicBlock) {
 			var function = basicBlock.Function;
-			var script = function.Script;
-			var instructions = script.Instructions;
-
-			var lastInstruction = instructions[basicBlock.LastInstructionIndex];
+			var lastInstruction = basicBlock.LastInstruction;
 
 			if(lastInstruction.IsReturn) {
 				function.ExitBlocks.Add(basicBlock);
@@ -208,6 +202,8 @@ namespace Majiro.Script.Analysis.ControlFlow {
 				var nextBlock = function.BasicBlockFromOffset(offset);
 				if(nextBlock == null)
 					throw new Exception("Invalid jump target");
+				if(basicBlock.Successors.Contains(nextBlock))
+					continue;
 				basicBlock.Successors.Add(nextBlock);
 				nextBlock.Predecessors.Add(basicBlock);
 			}
@@ -239,6 +235,7 @@ namespace Majiro.Script.Analysis.ControlFlow {
 			}
 
 			script.Representation = MjoScriptRepresentation.InTransition;
+			script.Instructions = script.Functions.SelectMany(function => function.Instructions).ToList();
 
 			// calculate size and offset for all instructions
 			uint offset = 0;
@@ -279,12 +276,12 @@ namespace Majiro.Script.Analysis.ControlFlow {
 			foreach(var function in script.Functions) {
 				script.FunctionIndex.Add(new FunctionIndexEntry {
 					NameHash = function.NameHash,
-					Offset = function.StartOffset!.Value
+					Offset = function.FirstInstruction.Offset!.Value
 				});
 			}
 			script.Functions = null;
 
-			script.EntryPointOffset = script.EntryPointFunction.StartOffset!.Value;
+			script.EntryPointOffset = script.EntryPointFunction.FirstInstruction.Offset!.Value;
 			script.EntryPointFunction = null;
 
 			script.Representation = MjoScriptRepresentation.InstructionList;

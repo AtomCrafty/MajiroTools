@@ -11,7 +11,7 @@ namespace Majiro {
 
 		static Helpers() {
 			Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-			ShiftJis = Encoding.GetEncoding(932);
+			ShiftJis = Encoding.GetEncoding(932, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
 		}
 
 		public static string ReadSizedString(this BinaryReader reader, int size, Encoding encoding = null) =>
@@ -60,16 +60,31 @@ namespace Majiro {
 
 		public static void PreOrderSort<T>(this IList<T> nodes, Func<T, List<T>> childSelector) {
 			var graph = nodes.ToDictionary(node => node, childSelector);
-			var added = new HashSet<T>();
+			var visited = new HashSet<T>();
 
 			nodes.Clear();
 			foreach(var node in graph.Keys) Visit(node);
 
 			void Visit(T node) {
-				if(!added.Add(node)) return;
+				if(!visited.Add(node)) return;
 				
 				nodes.Add(node);
 				graph[node].ForEach(Visit);
+			}
+		}
+
+		public static void PostOrderSort<T>(this IList<T> nodes, Func<T, List<T>> childSelector) {
+			var graph = nodes.ToDictionary(node => node, childSelector);
+			var visited = new HashSet<T>();
+
+			nodes.Clear();
+			foreach(var node in graph.Keys) Visit(node);
+
+			void Visit(T node) {
+				if(!visited.Add(node)) return;
+				
+				graph[node].ForEach(Visit);
+				nodes.Add(node);
 			}
 		}
 	}

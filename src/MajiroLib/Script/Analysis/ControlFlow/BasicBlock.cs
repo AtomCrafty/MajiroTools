@@ -8,11 +8,6 @@ namespace Majiro.Script.Analysis.ControlFlow {
 		public readonly Function Function;
 		public MjoScript Script => Function.Script;
 
-		public int FirstInstructionIndex = -1;
-		public int LastInstructionIndex = -1;
-		public int InstructionCount => FirstInstructionIndex != -1 && LastInstructionIndex != -1
-			? LastInstructionIndex - FirstInstructionIndex + 1 : -1;
-
 		public bool IsEntryBlock;
 		public bool IsExitBlock;
 
@@ -23,16 +18,14 @@ namespace Majiro.Script.Analysis.ControlFlow {
 		public bool IsDestructorEntryBlock =>
 			Predecessors.Count == 1 && Predecessors[0].LastInstruction.Opcode.Value == 0x847;
 
-		public Instruction FirstInstruction => Function.Script.Instructions[FirstInstructionIndex];
-		public Instruction LastInstruction => Function.Script.Instructions[LastInstructionIndex];
+		public Instruction FirstInstruction => Instructions.First();
+		public Instruction LastInstruction => Instructions.Last();
 
 		public List<PhiInstruction> PhiNodes;
 		public StackValue[] StartState;
 		public StackValue[] EndState;
 
-		public IEnumerable<Instruction> Instructions => Enumerable
-			.Range(FirstInstructionIndex, InstructionCount)
-			.Select(index => Function.Script.Instructions[index]);
+		public readonly List<Instruction> Instructions = new List<Instruction>();
 
 		public uint? StartOffset => Instructions.First().Offset;
 

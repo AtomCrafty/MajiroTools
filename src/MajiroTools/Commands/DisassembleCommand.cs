@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using Majiro.Project;
 using Majiro.Script;
 using Majiro.Script.Analysis.ControlFlow;
@@ -49,6 +50,7 @@ namespace MajiroTools.Commands {
 			bool file = Parameters.GetBool("file", 'f', true);
 			bool print = Parameters.GetBool("print", 'p', false);
 			bool externalize = Parameters.GetBool("externalize", 'e', true);
+			bool externalizeAll = Parameters.GetString("externalize", 'e', null) == "all";
 
 			if(externalize && !cfg)
 				throw new Exception("\acString externalization can't be used without cfg analysis. Either set \ab--cfg\ac to \abtrue\ac or \ab--externalize\ac to \abfalse\ac!");
@@ -59,10 +61,12 @@ namespace MajiroTools.Commands {
 
 			if(file) {
 				if(externalize) {
-					script.ExternalizeStrings(Parameters.GetString("externalize", 'e', null) == "all");
-					string resourcePath = Path.ChangeExtension(sourcePath, ".mjres");
-					using var s = File.Open(resourcePath, FileMode.Create);
-					Disassembler.WriteResourceTable(script, s);
+					script.ExternalizeStrings(externalizeAll);
+					if(script.ExternalizedStrings.Any()) {
+						string resourcePath = Path.ChangeExtension(sourcePath, ".mjres");
+						using var s = File.Open(resourcePath, FileMode.Create);
+						Disassembler.WriteResourceTable(script, s);
+					}
 				}
 
 				using var stream = File.Open(targetPath, FileMode.Create).NewTextWriter();

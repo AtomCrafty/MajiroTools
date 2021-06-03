@@ -1,6 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
+using System.Text;
 using Majiro.Project;
 using Majiro.Script.Analysis.ControlFlow;
 
@@ -9,6 +13,7 @@ namespace Majiro.Script {
 		InstructionList,
 		ControlFlowGraph,
 		SsaGraph,
+		SyntaxTree,
 
 		InTransition
 	}
@@ -22,7 +27,7 @@ namespace Majiro.Script {
 		// general info
 		public MjProject Project;
 		public bool EnableReadMark;
-		public readonly List<Instruction> Instructions = new List<Instruction>();
+		public List<Instruction> Instructions;
 		public Dictionary<string, string> ExternalizedStrings;
 		public MjoScriptRepresentation Representation;
 
@@ -45,14 +50,14 @@ namespace Majiro.Script {
 					Debug.Assert(EntryPointFunction == null);
 					break;
 				case MjoScriptRepresentation.ControlFlowGraph:
-					Debug.Assert(Instructions != null);
+					Debug.Assert(Instructions == null);
 					Debug.Assert(FunctionIndex == null);
 					Debug.Assert(EntryPointOffset == null);
 					Debug.Assert(Functions != null);
 					Debug.Assert(EntryPointFunction != null);
 					break;
 				case MjoScriptRepresentation.SsaGraph:
-					Debug.Assert(Instructions != null);
+					Debug.Assert(Instructions == null);
 					Debug.Assert(FunctionIndex == null);
 					Debug.Assert(EntryPointOffset == null);
 					Debug.Assert(Functions != null);
@@ -79,45 +84,107 @@ namespace Majiro.Script {
 
 		public void ExternalizeStrings(bool externalizeLiterals) {
 			if(ExternalizedStrings != null) return;
+			if(Representation == MjoScriptRepresentation.InstructionList)
+				throw new Exception("Unable to perform string externalization in " + Representation + " representation");
 
 			ExternalizedStrings = new Dictionary<string, string>();
 			int messageCount = 0;
 
-			foreach(var instruction in Instructions) {
+			foreach(var block in Blocks) {
+				for(int i = 0; i < block.Instructions.Count; i++) {
+					var instruction = block.Instructions[i];
+					if(!instruction.IsText) continue;
+
+					// process the entire (multi-line) text block
+					var sb = new StringBuilder();
+					var last = instruction;
+					int nextIndex = i;
+					while(true) {
+						var next = block.Instructions[nextIndex++];
+						if(next.IsText) {
+							sb.Append(next.String);
+						}
+						else if(next.IsProc) {
+							Debug.Assert(last.IsText);
+						}
+						else if(next.IsCtrl && next.String == "n") {
+							Debug.Assert(last.IsProc);
+							sb.Append('\n');
+						}
+						else if(next.IsCtrl && next.String == "p") {
+							Debug.Assert(last.IsProc);
+							break;
+						}
+						else if(next.IsLine) {
+							continue;
+						}
+						else {
+							//Debug.Fail("Unexpected instruction: " + next);
+							break;
+						}
+						last = next;
+					}
+
+					// remove all additional instructions
+					int instructionCount = nextIndex - i;
+					Debug.Assert(instructionCount >= 3);
+					if(nextIndex != 3) {
+						block.Instructions.RemoveRange(i + 1, instructionCount - 3);
+					}
+
+					Debug.Assert(instruction.String != null);
+					Debug.Assert(instruction.ExternalKey == null);
+
+					string value = sb.ToString();
+					string key = "L" + ++messageCount;
+					ExternalizedStrings.Add(key, value);
+
+					instruction.String = null;
+					instruction.ExternalKey = key;
+				}
+			}
+
+			foreach(var instruction in Functions.SelectMany(function => function.Instructions)) {
 				if(instruction.String == null) continue;
 				if(!externalizeLiterals && !instruction.IsText) continue;
-
-				Debug.Assert(instruction.String != null);
-				Debug.Assert(instruction.ExternalKey == null);
-
-				string value = instruction.String;
-				string key = "L" + ++messageCount;
-				ExternalizedStrings.Add(key, value);
-
-				instruction.String = null;
-				instruction.ExternalKey = key;
 			}
 		}
 
 		public void InternalizeStrings() {
 			if(ExternalizedStrings == null) return;
+			if(Representation == MjoScriptRepresentation.InstructionList)
+				throw new Exception("Unable to perform string internalization in " + Representation + " representation");
 
-			foreach(var instruction in Instructions) {
-				if(instruction.ExternalKey == null) continue;
+			foreach(var block in Blocks) {
+				for(int i = 0; i < block.Instructions.Count; i++) {
+					var instruction = block.Instructions[i];
+					if(instruction.ExternalKey == null) continue;
+					if(!ExternalizedStrings.TryGetValue(instruction.ExternalKey, out string text))
+						throw new Exception("Unable to resolve external string resource " + instruction.ExternalKey);
+					
+					Debug.Assert(instruction.String == null);
+					Debug.Assert(instruction.ExternalKey != null);
 
-				Debug.Assert(instruction.String == null);
-				Debug.Assert(instruction.ExternalKey != null);
+					var lines = text.Split('\n');
+					instruction.ExternalKey = null;
+					instruction.String = lines[0];
 
-				string key = instruction.ExternalKey;
-				string value = ExternalizedStrings[key];
-
-				instruction.String = value;
-				instruction.ExternalKey = null;
+					// insert "proc - ctrl n - text" sequence for each additional line
+					foreach(string additionalLine in lines.Skip(1)) {
+						block.Instructions.InsertRange(i + 1, new[] {
+							new Instruction(Opcode.ByMnemonic["proc"], block),
+							new Instruction(Opcode.ByMnemonic["ctrl"], block) { String = "n" },
+							new Instruction(Opcode.ByMnemonic["text"], block) { String = additionalLine }
+						});
+						i += 3;
+					}
+				}
 			}
 
 			ExternalizedStrings = null;
 		}
 
 		public void ToInstructionList() => ControlFlowPass.ToInstructionList(this);
+		public void ToControlFlowGraph() => ControlFlowPass.ToControlFlowGraph(this);
 	}
 }

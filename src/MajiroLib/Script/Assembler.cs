@@ -4,10 +4,12 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Text;
 using CsvHelper;
 using Majiro.Script.Analysis.ControlFlow;
 using Majiro.Script.Analysis.StackTransition;
+using Majiro.Util;
 using VToolBase.Core;
 using static Majiro.Script.Assembler.TokenType;
 
@@ -180,6 +182,18 @@ namespace Majiro.Script {
 					discard = true;
 					inComment = true;
 				}
+				else if(c == '%') {
+					if(sb.Length == 0) {
+						// this percent sign is at the start of a %{} construct,
+						// so we treat it as a punctuation character.
+						finishBefore = true;
+						finishAfter = true;
+					}
+					else {
+						// otherwise, the percent sign is part of an identifier like $sin%
+						Debug.Assert(sb.ToString().StartsWith('$'));
+					}
+				}
 				else if(punctuationChars.Contains(c)) {
 					finishBefore = true;
 					finishAfter = true;
@@ -208,12 +222,14 @@ namespace Majiro.Script {
 			var tokens = Tokenize(reader);
 			using var enumerator = tokens.GetEnumerator();
 
-			Token ct;
+			Token lt = default;
+			Token ct = default;
 			Advance();
 
 			bool Advance() {
 				if(!enumerator.MoveNext())
 					throw new Exception("No more tokens to read");
+				lt = ct;
 				ct = enumerator.Current;
 				return ct.Type != EndOfFile;
 			}
@@ -253,7 +269,20 @@ namespace Majiro.Script {
 
 			var blocks = new Dictionary<string, BasicBlock>();
 
-			uint ParseHash() => uint.Parse(Consume(Hash).Value[1..], NumberStyles.HexNumber);
+			uint ParseHash() {
+				string name = Consume(Hash).Value[1..];
+				if(uint.TryParse(name, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint hash))
+					return hash;
+				if(!name.Contains('@')) {
+					//Console.WriteLine(">" + name + "<");
+					Debug.Assert(Data.KnownSyscallNames.Contains(name));
+					return Crc.Hash32('$' + name + Data.SyscallSuffix);
+				}
+				Debug.Assert(name.StartsWith('$'));
+				hash = Crc.Hash32(name);
+				Debug.Assert(Data.KnownFunctionNamesByHash.ContainsKey(hash));
+				return hash;
+			}
 
 			MjoType ParseType() => Consume(VarType).Value.ToLower() switch {
 				"int" => MjoType.Int,
@@ -487,18 +516,16 @@ namespace Majiro.Script {
 				string label = Consume(TokenType.Label).Value[..^1];
 				var block = GetBlock(function, label);
 
-				block.FirstInstructionIndex = function.Script.Instructions.Count;
-				block.PhiNodes = new List<PhiInstruction>();
+				//block.PhiNodes = new List<PhiInstruction>();
 
 				while(ct.Type != TokenType.Label && ct.Value != "}") {
 					var instruction = ParseInstruction(block);
-					if(instruction is PhiInstruction phi)
-						block.PhiNodes.Add(phi);
-					else
-						function.Script.Instructions.Add(instruction);
+					//if(instruction is PhiInstruction phi)
+					//	block.PhiNodes.Add(phi);
+					//else
+					block.Instructions.Add(instruction);
 				}
 
-				block.LastInstructionIndex = function.Script.Instructions.Count - 1;
 				return block;
 			}
 
@@ -521,6 +548,8 @@ namespace Majiro.Script {
 			}
 
 			Function ParseFunction(MjoScript script) {
+				blocks.Clear();
+
 				Consume(Func);
 				uint hash = ParseHash();
 
@@ -528,8 +557,7 @@ namespace Majiro.Script {
 
 				var function = new Function(script, hash) {
 					ParameterTypes = types,
-					Blocks = new List<BasicBlock>(),
-					FirstInstructionIndex = script.Instructions.Count
+					Blocks = new List<BasicBlock>()
 				};
 
 				if(ct.Type == EntryPoint) {
@@ -546,7 +574,7 @@ namespace Majiro.Script {
 
 				ConsumePunctuation("}");
 
-				function.LastInstructionIndex = script.Instructions.Count - 1;
+				function.LocalTypes = function.Instructions.Single(inst => inst.IsAlloca).TypeList;
 				return function;
 			}
 
@@ -605,7 +633,12 @@ namespace Majiro.Script {
 				return script;
 			}
 
-			return ParseScript();
+			try {
+				return ParseScript();
+			}
+			catch(Exception e) {
+				throw new Exception($"Failed to parse script. Last token: {lt.Type} '{lt.Value}' in line {lt.Row}, column {lt.Column}", e);
+			}
 		}
 
 		public static Dictionary<string, string> ReadResourceTable(Stream s) {

@@ -23,6 +23,7 @@ namespace MajiroTools.Commands {
 
 		public override (char shorthand, string name, string fallback, string description)[] Flags => new[] {
 			('e', "externalized", "true", "Whether to read strings from an external .mjres file."),
+			('c', "encrypt", "true", "Whether to encrypt the script file."),
 			('q', "quiet", "false", "Disable user-friendly output"),
 			('w', "wait", "false", "Whether to wait after completing the command")
 		};
@@ -46,7 +47,7 @@ namespace MajiroTools.Commands {
 			}
 
 			using var writer = File.Open(targetPath, FileMode.Create).NewWriter();
-			Assembler.AssembleScript(script, writer);
+			Assembler.AssembleScript(script, writer, Parameters.GetBool("encrypt", 'c', true));
 
 			Wait();
 			return true;
