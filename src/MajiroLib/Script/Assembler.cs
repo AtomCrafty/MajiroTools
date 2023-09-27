@@ -646,6 +646,11 @@ namespace Majiro.Script {
 			return reader.GetRecords(new { Key = "", Value = "" }).ToDictionary(pair => pair.Key, pair => pair.Value);
 		}
 
+		public static void AssembleToFile(MjoScript script, string path) {
+			using var writer = File.Open(path, FileMode.Create).NewWriter();
+			AssembleScript(script, writer);
+		}
+
 		public static void AssembleScript(MjoScript script, BinaryWriter writer, bool encrypt = true) {
 
 			script.InternalizeStrings();

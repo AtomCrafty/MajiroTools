@@ -24,7 +24,9 @@ namespace MajiroTools.Commands {
 		};
 
 		public override (string syntax, string description)[] Usage => new[] {
-			("\absource", "Assemble the \absource\a- script")
+			("\absheet", "Inserts translation strings from \absheet\a- into scripts in the current folder"),
+			("\absheet infolder", "Inserts translation strings from \absheet\a- into scripts in the \abinfolder\a-"),
+			("\absheet infolder outfolder", "Places the translated scripts in a different directory")
 		};
 
 		public override (char shorthand, string name, string fallback, string description)[] Flags => new[] {
@@ -68,10 +70,9 @@ namespace MajiroTools.Commands {
 					if(file != outFile)
 						File.Copy(file, outFile, true);
 					continue;
-				};
+				}
 
-				using var reader = File.OpenRead(file).NewReader();
-				var script = Disassembler.DisassembleScript(reader);
+				var script = Disassembler.DisassembleFromFile(file);
 
 				script.ToControlFlowGraph();
 				script.ExternalizeStrings(false);
@@ -114,8 +115,7 @@ namespace MajiroTools.Commands {
 				script.InternalizeStrings();
 				script.ToInstructionList();
 
-				using var writer = File.Open(outFile, FileMode.Create).NewWriter();
-				Assembler.AssembleScript(script, writer);
+				Assembler.AssembleToFile(script, outFile);
 			}
 
 			Wait();

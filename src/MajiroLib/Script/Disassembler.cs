@@ -16,6 +16,11 @@ namespace Majiro.Script {
 
 		private const string Indent = " ";
 
+		public static MjoScript DisassembleFromFile(string path) {
+			using var reader = File.OpenRead(path).NewReader();
+			return DisassembleScript(reader);
+		}
+
 		public static MjoScript DisassembleScript(BinaryReader reader) {
 			string signature = reader.ReadSizedString(16);
 			bool isEncrypted = signature == "MajiroObjX1.000\0";
