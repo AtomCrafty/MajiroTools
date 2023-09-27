@@ -19,6 +19,7 @@ namespace MajiroTools {
 			CommandManager.Register("assemble", parameters => new AssembleCommand(parameters));
 			CommandManager.Register("translate", parameters => new TranslateCommand(parameters));
 			CommandManager.Register("project", parameters => new ProjectCommand(parameters));
+			CommandManager.Register("find", parameters => new FindCommand(parameters));
 
 			if(!CommandManager.TryRun(args)) {
 				if(args.Length == 0)
