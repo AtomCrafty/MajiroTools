@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<TargetFramework>netcoreapp3.1</TargetFramework>
+		<TargetFramework>net7.0</TargetFramework>
 		<AssemblyName>maji</AssemblyName>
 	</PropertyGroup>
 
@@ -20,8 +20,6 @@
 
 	<Import Project="..\VToolBase\Cli\Cli.projitems" Label="Shared" />
 
-	<Import Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v16.0\TextTemplating\Microsoft.TextTemplating.targets" />
-
 	<PropertyGroup>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	</PropertyGroup>
@@ -31,20 +29,4 @@
 		<OverwriteReadOnlyOutputFiles>true</OverwriteReadOnlyOutputFiles>
 		<TransformOutOfDateOnly>false</TransformOutOfDateOnly>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<None Update="AutoVersion.tt">
-			<Generator>TextTemplatingFileGenerator</Generator>
-			<LastGenOutput>AutoVersion.cs</LastGenOutput>
-		</None>
-	</ItemGroup>
-
-	<ItemGroup>
-		<Compile Update="AutoVersion.cs">
-			<DesignTime>True</DesignTime>
-			<AutoGen>True</AutoGen>
-			<DependentUpon>AutoVersion.tt</DependentUpon>
-		</Compile>
-	</ItemGroup>
-
 </Project>
