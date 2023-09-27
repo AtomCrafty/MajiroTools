@@ -1,0 +1,491 @@
+959B0A16	Abs
+109CA5DB	atoi
+DECB9C75	SetCursor
+DCA7DA63	PerformDiskCheck
+CB8AB2A3	Chr
+8C283F7F	GetClientHeight
+E06200C4	GetClientWidth
+A90F0E05	HasClipboardChanged
+12877048	Cos
+4694366A	HashName
+F3679C34	debugout
+DCC0D033	ShowStackTrace
+67444F84	DialogQuestionOk
+1576CCEC	DialogQuestionOkCancel
+5F7FFD3B	DialogQuestionYesNo
+DF644F85	dialog_error_ok
+B5551FDF	DialogErrorOkCancel
+4020C370	DialogErrorRetryCancel
+65D3B77C	DialogErrorYesNo
+7F01F772	OpenStringInputDialog
+4D2D4277	DialogOk
+0D141855	DialogOkCancel
+E218BA5F	DialogRetryCancel
+D0F4B51A	DialogWarningOk
+EDFD552C	DialogWarningOkCancel
+253982F4	DialogWarningRetryCancel
+8DC0D2CD	DialogWarningYesNo
+693D9729	DialogYesNo
+E2413EF9	ArrayCloneFloat
+7FCF3C82	ArrayCloneInt
+5BBAE511	ArrayCloneString
+A6AC6CCC	ArrayCreateFloat
+96B07AEE	ArrayCreateInt
+1F57B724	ArrayCreateString
+AAB68E6D	ArraySingleFloat
+3A49E325	ArraySingleInt
+134D5585	ArraySingleString
+42D7C922	DragAcceptFiles
+87A631A6	
+D6333B3C	FileClose
+E4E3B40D	FileOpen
+63B8CB23	FileWriteLine
+2539D212	FileReadInt
+E8A6A59F	
+6008BEBB	
+55232561	FileReadString
+D1921ED9	OpenTextFile
+C46925CF	ForceFocus
+F103C078	PasteIntoFocusedWindow
+C47DBE4B	GetClipboardContent
+C32E286F	DragDropFilePath
+3E11F2C5	GetFrontBuffer
+F66CD6EA	GetSystemLocale
+6E83677A	get_variable
+F9A3B675	GetIntVariable
+86294BFE	GetStringVariable
+160176BE	get_variable$
+4B5AC64B	is_log_no_pic
+3D4B9052	GetLogNoVoice
+619DE833	is_report_no_pic
+067B44A4	GetReprotNoVoice
+6E6C641A	is_testplay
+6F769889	IntToString
+6CFC884A	max
+3D053317	min
+00D696CC	CountCommaSeparatedParts
+8EB8F951	OpenHelpFile
+B7E3E81C	
+C6282F19	RandomInt
+46B18379	RandomFloat
+80177286	RegistryReadInt
+A2E45C9C	RegistryReadString
+9A1ACECA	RegistryWriteInt
+EDB64309	RegistryWriteString
+4FAC462C	LoadArchive
+F4BB403D	UnloadArchive
+BC6402C9	SetClipboardContent
+C1D2B85A	SetFastModeFlg_AR
+2399D761	set_frontbuffer
+D2219A75	
+CD290AEF	set_variable
+4AFC6E20	SetWallpaper
+FA34E434	SetWatchList
+EE2B6D92	Sin
+E90E0A19	OpenSpeedConfigDialog
+5C823701	StrCmp
+FED7BFE9	GetDateString
+45815F6D	StrCmpIgnoreCase
+06906970	strleft$
+B0C8F550	StrLen
+AD74D9AC	StrLower
+4F62152A	
+8AEF9167	strmid$
+25401A1F	strright$
+3FE05B39	
+69DB4512	
+0D389C2F	
+266A3C79	strupr$
+BDAA8E96	Tan
+6584F13E	timer
+EE6B328D	timer_progress
+978047DB	
+DACA10AF	OpenUrl
+6938EF0C	
+140C298E	
+0692314A	
+269BDA78	
+CD00D280	ExecuteScript
+9627DDC3	
+0EDEFB0B	0_CallFunction
+76EE6C90	do_event
+29F1AC40	CallFunctionInThread
+078A756E	event_hook
+1295BBDA	event_hook_after
+A93C9856	DeleteFunction?
+718EF651	RunScript
+1E24E1B6	
+10DB0A43	ExecuteScript
+A62AA5EB	is_fast_mode
+4662E95D	
+3704C919	exit
+3EABF498	
+3C84073C	
+DD2056F6	
+42F6FDDF	SkipFrameTime?
+892E9B20	mk_read
+1204D7E8	
+008ACBC0	mk_wait
+32530606	
+818A4B92	
+F3D276F1	
+62374297	SetFullscreenMode
+FAC4F361	
+9EF1DDC3	
+86F0F608	
+4B306C5C	
+BC42CA9A	
+7547C477	
+C102BCC3	
+AB13BE44	
+F2F9DAA8	thread_begin
+AE497F1A	
+4EF903F3	
+806261CE	SetClockSpeed
+FF75CD29	
+CF35F0E3	wait
+5131E234	
+CC3E0342	
+B5A1E3C9	console_cls
+5FDCCCEE	
+SYS_E42730D
+934D927B	
+8D8D8817	
+06B3C8AC	
+82FD765B	
+2CB1BC41	
+5B87A41D	console_is_on
+BA81EF8D	
+F1F8A206	
+728876A3	
+6E080825	
+88B4B26C	
+3F401BBD	
+979D1F16	
+A2743878	
+6621F84D	
+0C6D0129	
+307F28BC	
+59180BBB	
+5C9ED743	
+403960F8	console_set
+30FA2A29	console_setzerotime
+35A89417	fontout
+90816C6E	
+E186D19A	
+57F6310D	fontout_locate
+9A661709	
+B75C3B5F	
+8CFC4573	
+05EA6E4D	
+E6A97E70	
+D4066E31	
+4133D7A9	
+877445CE	load_font
+7D8B2C41	
+098399F2	LoadFont
+DF9F7749	
+ACCF4004	
+0542E1B7	
+824D124F	
+25D92502	
+BBF35806	
+B0CE081A	
+507F22C6	
+29098EC0	
+09C43040	SetViewport
+4AFC5C07	fuchidori_copy
+2159EBE0	
+F63ED9AE	
+70612DB5	get_alfapage
+E5E4E2FF	grp_alfa_tabled_copy
+D01BE374	grp_boxfill
+56BBBA3A	grp_copy
+FDDF6C40	grp_extboxfill
+30636D6E	grp_extcopy
+171AEE22	SetViewportOffset
+DA675785	grp_mod_copy
+AC796720	grp_modify_copy
+61BAE53C	grp_mulboxfill
+A361D9F7	grp_mulcopy
+89B59D02	GrpMulBoxFill2
+4C310B4B	grp_point_get
+7E277952	grp_point_set
+053FAC99	grp_reverse
+4697D2DD	grp_revmulcopy
+FD128A61	grp_sepia
+87113971	grp_swap
+4FA8483F	
+3CAD3884	make_alfa_table
+9AC11F47	make_mosaic
+A79731A2	movie_play
+18423EAA	
+D14A4D9C	
+D6C3BBAC	
+221C2CC2	
+78A31C03	
+6F5689E4	movie_texture_play
+EADD9484	
+80F94706	
+E3605CFA	
+F63CB36C	
+83D81F59	page_create
+DAD96289	page_create_file
+57EFA275	page_create_file_withalfa
+F94B3586	page_create_withalfa
+5E4E3063	page_drawmode
+8D84B83F	
+F8FD08F6	page_len_x
+65F2E980	page_len_y
+C50DFD06	page_release
+F9705332	SetAlphaPage
+D3C06820	
+7A7B6ED4	SetEncryptionKey
+539B07BC	pic_len_x
+CE94E6CA	pic_len_y
+5EB974F7	pic_unpack
+924EE3EB	rgb
+54EF8174	
+3670B283	IsCursorInViewport
+929A367D	GetCapsLockState
+B1681699	GetJoystickMode
+F9D94E91	SetEnableJoystick
+D34E9B28	GetKeyState
+F65AA4C0	GetInputCount
+D5999D46	DisableMenuKey?
+05B1A6E8	EnableMenuKey?
+125CFBDB	
+CA30043A	
+9143DC9E	SetSaveFilePreviewImage
+89CE8C53	GetSaveFilePreviewImage
+490D6B50	
+78A6A112	
+168EFCB7	
+3CBA6309	
+8F874E29	
+3A3CA0F1	do_load
+89018DD1	
+C438BA98	RemoveVideo
+4C99B0EA	
+8CD709F9	
+65075141	
+A549E852	
+4FFAB7C4	
+99A5DE25	IsFlagSet
+3378635D	
+E91B0504	
+7C3B36C5	
+1BB47604	
+44B5C4ED	save_menu_disable
+4D849AA6	save_menu_enable
+F8004993	save_point
+3474D65B	
+EB5CC468	SetFlag
+9AF10167	
+3A3BFB29	
+D538F7B5	
+4E1EB9D0	
+F8D18340	
+A7C6E918	
+EFD49BC9	
+72DB7ABF	
+2075C300	
+AD0F8767	
+AF6571AB	
+A909A32A	
+163C0878	
+D08A57F8	EFD59130
+D215E29A	
+23D5D11D	
+AEFC64DA	
+FB7FB744	
+CA5C98F2	
+0D36E2A7	
+BEF4EDFA	
+5C9761C5	
+B758AC4E	
+2C18D5A9	
+45E32EA6	
+E316A8F2	
+BB9D7A7F	
+6DDEB30E	
+1F5A14D4	
+F5E5BE93	
+E5A2CE14	
+850EECF4	
+D481E1A2	
+EBB5886C	
+50CD2DCA	
+F0FD9886	
+2E99E98C	
+D583668C	
+1CD5BCA8	
+62442EC6	
+FAF17B1C	
+DA60F137	
+F430015B	
+321717D1	MarkFontProportional?
+4EA2D1FC	
+95FF28F2	
+EE154520	get_autospeed
+111BD910	get_effectspeed
+C5270429	get_font_name$
+E5C70196	get_mojispeed
+1F9F3D5A	GetVoiceChannelVolume
+3513EE87	
+F4F00701	
+22C23FA2	
+735C88F1	
+68BA0964	
+DDD25909	
+97BD691D	IsFemaleVoiceEnabled
+02026AC6	IsMaleVoiceEnabled
+E5DCEF92	GetContinueVoice
+C692BE76	GetLowerMusicDuringVoice
+13C305DA	GetVoicePanningEnabled
+6ED38886	set_autospeed
+0C93FCB4	SetEffectSpeed
+CD111B0E	
+1EC3C6BB	
+6501CC30	set_mojispeed
+0C7A0E97	SetMusicVolume
+6FCB7185	
+072E738C	SetSoundVolume
+6EAEC2A0	SetVoiceVolume
+BFA74901	
+B3FFDFFA	
+15D07DF8	
+0DC634C4	PlayMusic
+844D2028	
+B268F04F	Sound1Loop
+DE1E2ED0	Sound2Loop
+4311CFA6	Sound3Loop
+26DC6566	Sound4Loop
+4980F82C	
+4F6367B3	FadeMusic?
+15EEDEAA	
+379FDB39	
+EEAA9104	
+2626FE02	
+F86FC950	
+A589DBD1	
+ABB7FCFB	
+D011FF32	
+F8D8925B	
+91CEACF2	
+0C070535	
+E7B90DF5	SetMusicVolume
+D8279A9B	
+F62E3CA7	Sound1
+708B0256	sound2
+170B0B45	
+2E861C51	
+E712FEC1	
+E0AA2F52	
+B8155FF4	
+A0B0FEAD	
+546F69C3	
+E799EAC8	
+804FF66D	
+ED84E320	sound3
+C0E98B1D	
+39AE7891	
+F03A9A01	
+F7824B92	
+5747E915	
+77527EF5	
+838DE99B	
+08CB5C29	
+57AD7635	
+884949E0	Sound4
+8AD70056	
+5C7746D1	
+95E3A441	
+925B75D2	
+B669E371	
+3D6CF5BE	
+C9B362D0	
+E9E5564D	
+1D93FD7E	
+8424CF12	sound_ch
+9CABFDF3	sound_ch_fade
+7B657BAB	sound_ch_fadeout
+B2F1993B	sound_ch_get_fn
+A65B03AE	sound_ch_pan
+2B10081B	sound_ch_stat
+DFCF9F75	sound_ch_stop
+F9D7B692	sound_ch_vol
+0BEF00DB	sound_ch_wait
+C0C15D7C	
+926C13E5	
+5BF8F175	
+5C4020E6	
+7F918815	
+777AA894	
+83A53FFA	
+201D3D29	
+5785A054	
+32D0236C	
+8E8167F2	voice_ch
+19FC7CC7	voice_ch_fade
+8F905B3F	voice_ch_fadeout
+4604B9AF	voice_ch_get_fn
+94EAEFFC	voice_ch_pan
+AE47892F	voice_ch_stat
+5A981E41	voice_ch_stop
+CB665AC0	voice_ch_vol
+8EB881EF	voice_ch_wait
+46B28FEF	FadeVoice?
+173B92D1	
+DEAF7041	
+DF91CFC5	
+90D5298A	
+F1097A07	voice_stat
+05D6ED69	
+801D7AF9	SetVoiceVolume?
+D1F672C7	voice_wait
+2BD1709D	
+7E0B8320	
+CF2B1E50	
+6DE6CDFC	
+DFD5599E	invalidate_rect
+F80BC9B6	SpriteAlphaDefine1
+A30A7D75	SpriteAlphaDefine2
+FF7C52E6	sprite_alfa_set
+D7771B72	sprite_alfa_wait
+DFDBA8E4	sprite_animate_add
+C29B30E3	sprite_animate_define
+52819912	SpriteAnimateDefine2?
+103EDAC0	sprite_animate_wait
+7B0E970D	sprite_clip
+EF4581DC	sprite_create
+F6A05538	SpriteCreateAndUseBackBuffer?
+C2C3C4F4	sprite_create_file
+CD71FE7A	SpriteCreateFileAndAddAlphaChannel
+265E07D7	sprite_get_page
+6B4A7873	sprite_get_pos_x
+F6459905	sprite_get_pos_y
+DCC706EF	DoesSpriteExist
+68EF2987	is_sprite_move
+63F660A2	sprite_len_x
+FEF981D4	sprite_len_y
+E119D5BA	sprite_move
+40258A56	sprite_move_wait
+4AB0CAEF	sprite_paste
+63C341B1	sprite_pop
+4A02D664	sprite_priority_high
+5548EF5E	sprite_priority_high_single
+69073588	sprite_priority_low
+7BFFC5B1	sprite_priority_low_single
+721FA5B7	sprite_push
+58B31737	sprite_release
+661AFB43	sprite_rotate
+3F34D519	ps_sprite_set_smooth_animation
+EDCA8992	sprite_tl_set
+01B4517C	sprite_xmodify_define
+E76F8A65	ps_sprite_xmodify_get_
+3B1D5537	sprite_xmodify_set
+6F384A3D	sprite_ymodify_define
+42E41A6B	ps_sprite_ymodify_get_
+BA383010	sprite_ymodify_set
+8838FD56	sprite_page_auto_release
