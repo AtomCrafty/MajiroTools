@@ -535,7 +535,7 @@ namespace Majiro.Script {
 						PrintFunction(function, writer);
 					}
 					break;
-				default:
+				case MjoScriptRepresentation.InstructionList:
 					foreach(var functionEntry in script.FunctionIndex) {
 						writer.ForegroundColor = ConsoleColor.DarkYellow;
 						writer.Write("index ");
@@ -555,6 +555,9 @@ namespace Majiro.Script {
 					foreach(var instruction in script.Instructions) {
 						PrintInstruction(instruction, writer);
 					}
+					break;
+				case MjoScriptRepresentation.SyntaxTree:
+					// todo
 					break;
 			}
 		}

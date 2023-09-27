@@ -297,6 +297,9 @@ namespace Majiro.Script.Analysis.StackTransition {
 										list.Add(MjoTypeMask.Int);
 										list.Add(MjoTypeMask.Int);
 										break;
+									case "n":
+									case "N":
+									case "p":
 									case "w":
 										break;
 									default:

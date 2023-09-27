@@ -29,6 +29,9 @@ namespace Majiro.Script.Analysis.Source {
 		TRes Visit(DestructorStatement node, TArg arg);
 		TRes Visit(ReturnStatement node, TArg arg);
 		TRes Visit(IfStatement node, TArg arg);
+		TRes Visit(TextStatement node, TArg arg);
+		TRes Visit(CtrlStatement node, TArg arg);
+		TRes Visit(ProcStatement node, TArg arg);
 	}
 
 	public abstract class SyntaxVisitor<TArg, TRes> : ISyntaxVisitor<TArg, TRes> {
@@ -56,5 +59,8 @@ namespace Majiro.Script.Analysis.Source {
 		public virtual TRes Visit(DestructorStatement node, TArg arg) => Visit((BlockStatement)node, arg);
 		public virtual TRes Visit(ReturnStatement node, TArg arg) => Visit((Statement)node, arg);
 		public virtual TRes Visit(IfStatement node, TArg arg) => Visit((Statement)node, arg);
+		public virtual TRes Visit(TextStatement node, TArg arg) => Visit((Statement)node, arg);
+		public virtual TRes Visit(CtrlStatement node, TArg arg) => Visit((Statement)node, arg);
+		public virtual TRes Visit(ProcStatement node, TArg arg) => Visit((Statement)node, arg);
 	}
 }

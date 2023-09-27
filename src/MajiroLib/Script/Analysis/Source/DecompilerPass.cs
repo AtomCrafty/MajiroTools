@@ -763,6 +763,51 @@ namespace Majiro.Script.Analysis.Source {
 								return new IfStatement(condition, new BlockStatement(thenBranch), new BlockStatement(elseBranch));
 							}
 
+						case 0x840:
+							Debug.Assert(EvaluationStack.Count == 0);
+							return new TextStatement(instruction.String);
+
+						case 0x841:
+							Debug.Assert(EvaluationStack.Count == 0);
+							return new ProcStatement();
+
+						case 0x842:
+							Debug.Assert(EvaluationStack.Count == 0);
+							Expression[] operands;
+							switch(instruction.String) {
+								case "s":
+								case "t":
+								case "x":
+								case "d":
+									operands = PopArguments(1);
+									break;
+
+								case "c":
+								case "l":
+								case "o":
+									operands = PopArguments(2);
+									break;
+
+								case "f":
+									operands = PopArguments(5);
+									break;
+
+								case "g":
+									operands = PopArguments(6);
+									break;
+
+								case "n":
+								case "N":
+								case "p":
+								case "w":
+									operands = new Expression[0];
+									break;
+
+								default:
+									throw new Exception("Unrecognized control code: " + instruction.String);
+							}
+							return new CtrlStatement(instruction.String, operands.ToArray());
+
 						default:
 							Debug.Fail("Unrecognized instruction: " + instruction);
 							break;

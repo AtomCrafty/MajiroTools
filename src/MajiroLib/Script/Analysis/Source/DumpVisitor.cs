@@ -303,5 +303,36 @@ namespace Majiro.Script.Analysis.Source {
 			}
 			return false;
 		}
+
+		public override bool Visit(TextStatement node, IColoredWriter writer) {
+			writer.ForegroundColor = ConsoleColor.Magenta;
+			writer.Write("text");
+			WritePunctuation("(", writer);
+			writer.ForegroundColor = ConsoleColor.Green;
+			writer.Write('"' + node.Text.Escape() + '"');
+			WritePunctuation(");", writer);
+			return false;
+		}
+
+		public override bool Visit(CtrlStatement node, IColoredWriter writer) {
+			writer.ForegroundColor = ConsoleColor.Magenta;
+			writer.Write("ctrl");
+			WritePunctuation("(", writer);
+			writer.ForegroundColor = ConsoleColor.Green;
+			writer.Write('"' + node.ControlCode.Escape() + '"');
+			foreach(var operand in node.Operands) {
+				WritePunctuation(", ", writer);
+				operand.Accept(this, writer);
+			}
+			WritePunctuation(");", writer);
+			return false;
+		}
+
+		public override bool Visit(ProcStatement node, IColoredWriter writer) {
+			writer.ForegroundColor = ConsoleColor.Magenta;
+			writer.Write("proc");
+			WritePunctuation(";", writer);
+			return false;
+		}
 	}
 }
